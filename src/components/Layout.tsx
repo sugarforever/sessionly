@@ -1,27 +1,36 @@
-import { type ReactNode } from 'react'
+import { type ReactNode, useState, createContext, useContext } from 'react'
 import { Sidebar } from './Sidebar'
-import { useNavigation } from '@/contexts/NavigationContext'
+
+interface LayoutContextType {
+  sidebarCollapsed: boolean
+  setSidebarCollapsed: (collapsed: boolean) => void
+}
+
+const LayoutContext = createContext<LayoutContextType | null>(null)
+
+export function useLayout() {
+  const context = useContext(LayoutContext)
+  if (!context) {
+    throw new Error('useLayout must be used within a Layout')
+  }
+  return context
+}
 
 interface LayoutProps {
   children: ReactNode
 }
 
 export function Layout({ children }: LayoutProps) {
-  const { currentPage } = useNavigation()
-
-  // Chat page needs full height without padding
-  const isFullHeightPage = currentPage === 'chat'
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(true) // Collapsed by default
 
   return (
-    <div className="flex h-screen overflow-hidden bg-background">
-      <Sidebar />
-      <main className={isFullHeightPage ? 'flex-1 overflow-hidden' : 'flex-1 overflow-y-auto'}>
-        {isFullHeightPage ? (
-          children
-        ) : (
-          <div className="container mx-auto p-8">{children}</div>
-        )}
-      </main>
-    </div>
+    <LayoutContext.Provider value={{ sidebarCollapsed, setSidebarCollapsed }}>
+      <div className="flex h-screen overflow-hidden bg-[#0a0a0a]">
+        <Sidebar collapsed={sidebarCollapsed} onToggle={() => setSidebarCollapsed(!sidebarCollapsed)} />
+        <main className="flex-1 overflow-hidden">
+          {children}
+        </main>
+      </div>
+    </LayoutContext.Provider>
   )
 }

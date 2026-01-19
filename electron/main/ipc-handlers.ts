@@ -1,14 +1,8 @@
 import { ipcMain, Notification, shell, BrowserWindow } from 'electron'
-import type { IpcResponse, ChatMessage, ChatStreamChunk } from '../shared/types'
-import Store from 'electron-store'
-import { createOpenAI } from '@ai-sdk/openai'
-import { streamText } from 'ai'
-
-// Store for persisting user settings
-const store = new Store()
+import type { IpcResponse, ProjectGroup, Session, TerminalSpawnOptions } from '../shared/types'
 
 export function setupIPC() {
-  // Example: Get app version
+  // Get app version
   ipcMain.handle('app:getVersion', async (): Promise<IpcResponse<string>> => {
     try {
       const { app } = await import('electron')
@@ -21,7 +15,7 @@ export function setupIPC() {
     }
   })
 
-  // Example: Show notification
+  // Show notification
   ipcMain.handle(
     'notification:show',
     async (
@@ -44,7 +38,7 @@ export function setupIPC() {
     }
   )
 
-  // Example: Open external URL
+  // Open external URL
   ipcMain.handle('shell:openExternal', async (_event, url: string): Promise<IpcResponse<void>> => {
     try {
       await shell.openExternal(url)
@@ -58,201 +52,107 @@ export function setupIPC() {
   })
 
   // ============================================================================
-  // Database Operations (User Management)
+  // Sessions - Claude Code Session History
   // ============================================================================
 
-  // Get all users
-  ipcMain.handle('db:users:getAll', async (): Promise<IpcResponse<any[]>> => {
+  // Get all sessions grouped by project
+  ipcMain.handle('sessions:getAll', async (): Promise<IpcResponse<ProjectGroup[]>> => {
     try {
-      const { userRepository } = await import('./database')
-      const users = userRepository.getAll()
-      return { success: true, data: users }
+      const { getAllSessions } = await import('./services/session-store')
+      const groups = await getAllSessions()
+      return { success: true, data: groups }
     } catch (error) {
       return {
         success: false,
-        error: error instanceof Error ? error.message : 'Failed to get users',
+        error: error instanceof Error ? error.message : 'Failed to get sessions',
       }
     }
   })
 
-  // Get user by ID
-  ipcMain.handle('db:users:getById', async (_event, id: number): Promise<IpcResponse<any>> => {
-    try {
-      const { userRepository } = await import('./database')
-      const user = userRepository.getById(id)
-      if (!user) {
-        return { success: false, error: 'User not found' }
-      }
-      return { success: true, data: user }
-    } catch (error) {
-      return {
-        success: false,
-        error: error instanceof Error ? error.message : 'Failed to get user',
-      }
-    }
-  })
-
-  // Create user
+  // Get a single session by ID
   ipcMain.handle(
-    'db:users:create',
+    'sessions:get',
     async (
       _event,
-      data: { email: string; name: string | null }
-    ): Promise<IpcResponse<any>> => {
+      params: { sessionId: string; projectEncoded: string }
+    ): Promise<IpcResponse<Session>> => {
       try {
-        const { userRepository } = await import('./database')
-        const user = userRepository.create(data)
-        return { success: true, data: user }
+        const { getSession } = await import('./services/session-store')
+        const session = await getSession(params.sessionId, params.projectEncoded)
+        if (!session) {
+          return { success: false, error: 'Session not found' }
+        }
+        return { success: true, data: session }
       } catch (error) {
         return {
           success: false,
-          error: error instanceof Error ? error.message : 'Failed to create user',
+          error: error instanceof Error ? error.message : 'Failed to get session',
         }
       }
     }
   )
 
-  // Update user
+  // Refresh sessions (re-scan filesystem)
+  ipcMain.handle('sessions:refresh', async (): Promise<IpcResponse<void>> => {
+    return { success: true, data: undefined }
+  })
+
+  // ============================================================================
+  // Terminal - PTY Management
+  // ============================================================================
+
+  // Spawn a new terminal
   ipcMain.handle(
-    'db:users:update',
-    async (_event, params: {
-      id: number
-      data: { email?: string; name?: string | null }
-    }): Promise<IpcResponse<any>> => {
-      const { id, data } = params
+    'terminal:spawn',
+    async (event, options?: TerminalSpawnOptions): Promise<IpcResponse<string>> => {
       try {
-        const { userRepository } = await import('./database')
-        const user = userRepository.update(id, data)
-        if (!user) {
-          return { success: false, error: 'User not found' }
+        const terminalManager = await import('./services/terminal-manager')
+        const window = BrowserWindow.fromWebContents(event.sender)
+        if (!window) {
+          return { success: false, error: 'Window not found' }
         }
-        return { success: true, data: user }
+        const id = terminalManager.spawn(window, options)
+        return { success: true, data: id }
       } catch (error) {
         return {
           success: false,
-          error: error instanceof Error ? error.message : 'Failed to update user',
+          error: error instanceof Error ? error.message : 'Failed to spawn terminal',
         }
       }
     }
   )
 
-  // Delete user
-  ipcMain.handle('db:users:delete', async (_event, id: number): Promise<IpcResponse<boolean>> => {
+  // Write to terminal (no response needed)
+  ipcMain.on('terminal:write', async (_event, params: { id: string; data: string }) => {
     try {
-      const { userRepository } = await import('./database')
-      const deleted = userRepository.delete(id)
-      if (!deleted) {
-        return { success: false, error: 'User not found' }
-      }
-      return { success: true, data: true }
+      const terminalManager = await import('./services/terminal-manager')
+      terminalManager.write(params.id, params.data)
     } catch (error) {
-      return {
-        success: false,
-        error: error instanceof Error ? error.message : 'Failed to delete user',
-      }
+      console.error('Failed to write to terminal:', error)
     }
   })
 
-  // ============================================================================
-  // Chat Feature IPC Handlers
-  // (Can be removed if chat feature is not needed)
-  // ============================================================================
-
-  // Get OpenAI API key from secure storage
-  ipcMain.handle('chat:getApiKey', async (): Promise<IpcResponse<string | null>> => {
+  // Resize terminal (no response needed)
+  ipcMain.on('terminal:resize', async (_event, params: { id: string; cols: number; rows: number }) => {
     try {
-      const apiKey = store.get('openai.apiKey') as string | undefined
-      return { success: true, data: apiKey || null }
+      const terminalManager = await import('./services/terminal-manager')
+      terminalManager.resize(params.id, params.cols, params.rows)
     } catch (error) {
-      return {
-        success: false,
-        error: error instanceof Error ? error.message : 'Failed to get API key',
-      }
+      console.error('Failed to resize terminal:', error)
     }
   })
 
-  // Set OpenAI API key in secure storage
-  ipcMain.handle('chat:setApiKey', async (_event, apiKey: string): Promise<IpcResponse<void>> => {
+  // Kill terminal
+  ipcMain.handle('terminal:kill', async (_event, id: string): Promise<IpcResponse<void>> => {
     try {
-      if (apiKey && apiKey.trim().length > 0) {
-        store.set('openai.apiKey', apiKey.trim())
-      } else {
-        store.delete('openai.apiKey')
-      }
+      const terminalManager = await import('./services/terminal-manager')
+      terminalManager.kill(id)
       return { success: true, data: undefined }
     } catch (error) {
       return {
         success: false,
-        error: error instanceof Error ? error.message : 'Failed to save API key',
+        error: error instanceof Error ? error.message : 'Failed to kill terminal',
       }
     }
   })
-
-  // Send chat message and stream response
-  ipcMain.handle(
-    'chat:sendMessage',
-    async (event, messages: ChatMessage[]): Promise<IpcResponse<{ streamId: string }>> => {
-      try {
-        const apiKey = store.get('openai.apiKey') as string | undefined
-
-        if (!apiKey) {
-          return {
-            success: false,
-            error: 'OpenAI API key not configured',
-          }
-        }
-
-        const streamId = `stream-${Date.now()}`
-        const mainWindow = BrowserWindow.fromWebContents(event.sender)
-
-        if (!mainWindow) {
-          return {
-            success: false,
-            error: 'Window not found',
-          }
-        }
-
-        // Start streaming in the background
-        ;(async () => {
-          try {
-            const openai = createOpenAI({ apiKey })
-            const result = await streamText({
-              model: openai('gpt-4o-mini'),
-              messages: messages.map(m => ({
-                role: m.role,
-                content: m.content,
-              })),
-              temperature: 0.7,
-            })
-
-            // Stream the response
-            for await (const chunk of result.textStream) {
-              const streamChunk: ChatStreamChunk = {
-                type: 'content',
-                content: chunk,
-              }
-              mainWindow.webContents.send('chat:stream', streamChunk)
-            }
-
-            // Send completion signal
-            const doneChunk: ChatStreamChunk = { type: 'done' }
-            mainWindow.webContents.send('chat:stream', doneChunk)
-          } catch (error) {
-            const errorChunk: ChatStreamChunk = {
-              type: 'error',
-              error: error instanceof Error ? error.message : 'Unknown error occurred',
-            }
-            mainWindow.webContents.send('chat:stream', errorChunk)
-          }
-        })()
-
-        return { success: true, data: { streamId } }
-      } catch (error) {
-        return {
-          success: false,
-          error: error instanceof Error ? error.message : 'Failed to send message',
-        }
-      }
-    }
-  )
 }

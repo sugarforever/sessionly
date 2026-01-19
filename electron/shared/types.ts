@@ -13,24 +13,21 @@ export interface NotificationOptions {
   body: string
 }
 
-// Database types - imported from Drizzle schema
-// Types are auto-generated from schema.ts for type safety
-import type { User as DrizzleUser } from '../main/schema'
+// Session types - imported from session-types
+import type {
+  SessionSummary,
+  Session,
+  ProjectGroup,
+} from './session-types'
 
-export type User = DrizzleUser
+export type { SessionSummary, Session, ProjectGroup }
 
-// Chat feature types
-export interface ChatMessage {
-  id: string
-  role: 'user' | 'assistant' | 'system'
-  content: string
-  timestamp: number
-}
-
-export interface ChatStreamChunk {
-  type: 'content' | 'done' | 'error'
-  content?: string
-  error?: string
+// Terminal types
+export interface TerminalSpawnOptions {
+  cwd?: string
+  sessionId?: string
+  resume?: boolean
+  fork?: boolean
 }
 
 export interface ElectronAPI {
@@ -43,18 +40,18 @@ export interface ElectronAPI {
   // Shell
   openExternal: (url: string) => Promise<IpcResponse<void>>
 
-  // Database - User operations
-  dbUsersGetAll: () => Promise<IpcResponse<User[]>>
-  dbUsersGetById: (id: number) => Promise<IpcResponse<User>>
-  dbUsersCreate: (data: { email: string; name: string | null }) => Promise<IpcResponse<User>>
-  dbUsersUpdate: (id: number, data: { email?: string; name?: string | null }) => Promise<IpcResponse<User>>
-  dbUsersDelete: (id: number) => Promise<IpcResponse<boolean>>
+  // Sessions - Claude Code session history
+  sessionsGetAll: () => Promise<IpcResponse<ProjectGroup[]>>
+  sessionsGet: (sessionId: string, projectEncoded: string) => Promise<IpcResponse<Session>>
+  sessionsRefresh: () => Promise<IpcResponse<void>>
 
-  // Chat (can be removed if chat feature is not needed)
-  chatSendMessage: (messages: ChatMessage[]) => Promise<IpcResponse<{ streamId: string }>>
-  chatGetApiKey: () => Promise<IpcResponse<string | null>>
-  chatSetApiKey: (apiKey: string) => Promise<IpcResponse<void>>
-  onChatStream: (callback: (chunk: ChatStreamChunk) => void) => () => void
+  // Terminal - PTY management
+  terminalSpawn: (options?: TerminalSpawnOptions) => Promise<IpcResponse<string>>
+  terminalWrite: (id: string, data: string) => void
+  terminalResize: (id: string, cols: number, rows: number) => void
+  terminalKill: (id: string) => Promise<IpcResponse<void>>
+  onTerminalData: (callback: (id: string, data: string) => void) => () => void
+  onTerminalExit: (callback: (id: string, exitCode: number, signal?: number) => void) => () => void
 
   // Event listeners
   onMainMessage: (callback: (message: string) => void) => () => void
@@ -65,15 +62,15 @@ export type IpcChannels =
   | 'app:getVersion'
   | 'notification:show'
   | 'shell:openExternal'
-  | 'db:users:getAll'
-  | 'db:users:getById'
-  | 'db:users:create'
-  | 'db:users:update'
-  | 'db:users:delete'
-  | 'chat:sendMessage'
-  | 'chat:getApiKey'
-  | 'chat:setApiKey'
-  | 'chat:stream'
+  | 'sessions:getAll'
+  | 'sessions:get'
+  | 'sessions:refresh'
+  | 'terminal:spawn'
+  | 'terminal:write'
+  | 'terminal:resize'
+  | 'terminal:kill'
+  | 'terminal:data'
+  | 'terminal:exit'
   | 'main-process-message'
   | 'navigate-to'
 

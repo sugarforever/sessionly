@@ -1,10 +1,9 @@
-import { app, BrowserWindow, Tray } from 'electron'
+import { app, BrowserWindow, Tray, session } from 'electron'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { WindowStateManager } from './window-state-manager'
 import { setupIPC } from './ipc-handlers'
 import { createSystemTray } from './system-tray'
-import { initializeDatabase, closeDatabase } from './database'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 
@@ -65,15 +64,24 @@ function createWindow() {
 
 // App lifecycle
 app.whenReady().then(() => {
-  // Initialize database FIRST (before opening windows)
-  // This ensures migrations run before any UI interaction
-  try {
-    initializeDatabase()
-  } catch (error) {
-    console.error('Failed to initialize database:', error)
-    // Optionally: show error dialog and quit
-    // dialog.showErrorBox('Database Error', 'Failed to initialize database')
-    // app.quit()
+  // Setup Content Security Policy (production only)
+  // In development, Vite uses inline scripts for HMR which would be blocked
+  if (!VITE_DEV_SERVER_URL) {
+    session.defaultSession.webRequest.onHeadersReceived((details, callback) => {
+      callback({
+        responseHeaders: {
+          ...details.responseHeaders,
+          'Content-Security-Policy': [
+            "default-src 'self'; " +
+              "script-src 'self'; " +
+              "style-src 'self' 'unsafe-inline'; " +
+              "font-src 'self' data:; " +
+              "img-src 'self' data: blob:; " +
+              "connect-src 'self'",
+          ],
+        },
+      })
+    })
   }
 
   // Setup IPC handlers
@@ -108,5 +116,4 @@ app.on('before-quit', () => {
 // Cleanup
 app.on('will-quit', () => {
   tray?.destroy()
-  closeDatabase()
 })

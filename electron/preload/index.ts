@@ -13,22 +13,33 @@ const electronAPI: ElectronAPI = {
   // Shell
   openExternal: (url) => ipcRenderer.invoke('shell:openExternal', url),
 
-  // Database - User operations
-  dbUsersGetAll: () => ipcRenderer.invoke('db:users:getAll'),
-  dbUsersGetById: (id) => ipcRenderer.invoke('db:users:getById', id),
-  dbUsersCreate: (data) => ipcRenderer.invoke('db:users:create', data),
-  dbUsersUpdate: (id, data) => ipcRenderer.invoke('db:users:update', { id, data }),
-  dbUsersDelete: (id) => ipcRenderer.invoke('db:users:delete', id),
+  // Sessions - Claude Code session history
+  sessionsGetAll: () => ipcRenderer.invoke('sessions:getAll'),
+  sessionsGet: (sessionId, projectEncoded) =>
+    ipcRenderer.invoke('sessions:get', { sessionId, projectEncoded }),
+  sessionsRefresh: () => ipcRenderer.invoke('sessions:refresh'),
 
-  // Chat (can be removed if chat feature is not needed)
-  chatSendMessage: (messages) => ipcRenderer.invoke('chat:sendMessage', messages),
-  chatGetApiKey: () => ipcRenderer.invoke('chat:getApiKey'),
-  chatSetApiKey: (apiKey) => ipcRenderer.invoke('chat:setApiKey', apiKey),
-  onChatStream: (callback) => {
-    const subscription = (_event: Electron.IpcRendererEvent, chunk: import('../shared/types').ChatStreamChunk) => callback(chunk)
-    ipcRenderer.on('chat:stream', subscription)
+  // Terminal - PTY management
+  terminalSpawn: (options) => ipcRenderer.invoke('terminal:spawn', options),
+  terminalWrite: (id, data) => ipcRenderer.send('terminal:write', { id, data }),
+  terminalResize: (id, cols, rows) => ipcRenderer.send('terminal:resize', { id, cols, rows }),
+  terminalKill: (id) => ipcRenderer.invoke('terminal:kill', id),
+  onTerminalData: (callback) => {
+    const subscription = (_event: Electron.IpcRendererEvent, { id, data }: { id: string; data: string }) =>
+      callback(id, data)
+    ipcRenderer.on('terminal:data', subscription)
     return () => {
-      ipcRenderer.removeListener('chat:stream', subscription)
+      ipcRenderer.removeListener('terminal:data', subscription)
+    }
+  },
+  onTerminalExit: (callback) => {
+    const subscription = (
+      _event: Electron.IpcRendererEvent,
+      { id, exitCode, signal }: { id: string; exitCode: number; signal?: number }
+    ) => callback(id, exitCode, signal)
+    ipcRenderer.on('terminal:exit', subscription)
+    return () => {
+      ipcRenderer.removeListener('terminal:exit', subscription)
     }
   },
 

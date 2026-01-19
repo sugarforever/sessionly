@@ -1,9 +1,5 @@
 import { useNavigation } from '@/contexts/NavigationContext'
-import { HomePage } from '@/pages/HomePage'
-import { FeaturesPage } from '@/pages/FeaturesPage'
-import { ChatPage } from '@/features/chat/ChatPage'
-import { WeatherPage } from '@/pages/WeatherPage'
-import { SettingsPage } from '@/pages/SettingsPage'
+import { SessionsPage } from '@/features/sessions/SessionsPage'
 import { AboutPage } from '@/pages/AboutPage'
 import type { PageId } from '@/config/navigation'
 
@@ -16,11 +12,7 @@ import type { PageId } from '@/config/navigation'
  * 2. Add it to the pageComponents map with the same ID from navigation config
  */
 const pageComponents: Record<PageId, () => JSX.Element> = {
-  home: HomePage,
-  features: FeaturesPage,
-  chat: ChatPage, // Can be removed if chat feature is not needed
-  weather: WeatherPage,
-  settings: SettingsPage,
+  sessions: SessionsPage,
   about: AboutPage,
 }
 

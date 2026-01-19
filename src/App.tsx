@@ -4,7 +4,7 @@ import { PageRouter } from './components/PageRouter'
 
 function App() {
   return (
-    <NavigationProvider defaultPage="home">
+    <NavigationProvider defaultPage="sessions">
       <Layout>
         <PageRouter />
       </Layout>
