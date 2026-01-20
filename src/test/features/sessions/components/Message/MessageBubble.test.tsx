@@ -31,7 +31,7 @@ describe('MessageBubble', () => {
       const message = createMockMessage({ role: 'user', textContent: 'Test' })
       const { container } = renderWithProviders(<MessageBubble message={message} />)
 
-      const bubble = container.querySelector('.bg-zinc-800')
+      const bubble = container.querySelector('.bg-secondary')
       expect(bubble).toBeInTheDocument()
     })
   })
@@ -258,7 +258,7 @@ describe('MessageBubble', () => {
       const message = createMockMessage({ role: 'user' })
       const { container } = renderWithProviders(<MessageBubble message={message} />)
 
-      const avatar = container.querySelector('.bg-zinc-800')
+      const avatar = container.querySelector('.bg-secondary')
       expect(avatar).toBeInTheDocument()
     })
   })

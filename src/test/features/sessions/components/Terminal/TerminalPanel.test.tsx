@@ -46,33 +46,53 @@ beforeEach(() => {
 
 describe('TerminalPanel', () => {
   describe('rendering', () => {
-    it('should render terminal header', () => {
+    it('should render terminal header', async () => {
       const onClose = vi.fn()
       renderWithProviders(<TerminalPanel onClose={onClose} />)
+
+      // Wait for async effects
+      await waitFor(() => {
+        expect(mockTerminalSpawn).toHaveBeenCalled()
+      })
 
       expect(screen.getByText('Terminal')).toBeInTheDocument()
     })
 
-    it('should render close button', () => {
+    it('should render close button', async () => {
       const onClose = vi.fn()
       renderWithProviders(<TerminalPanel onClose={onClose} />)
+
+      // Wait for async effects
+      await waitFor(() => {
+        expect(mockTerminalSpawn).toHaveBeenCalled()
+      })
 
       const closeButton = screen.getByRole('button')
       expect(closeButton).toBeInTheDocument()
     })
 
-    it('should render terminal icon', () => {
+    it('should render terminal icon', async () => {
       const onClose = vi.fn()
       const { container } = renderWithProviders(<TerminalPanel onClose={onClose} />)
+
+      // Wait for async effects
+      await waitFor(() => {
+        expect(mockTerminalSpawn).toHaveBeenCalled()
+      })
 
       // Lucide icons add classes like "lucide lucide-terminal-square"
       const terminalIcon = container.querySelector('svg[class*="lucide"]')
       expect(terminalIcon).toBeInTheDocument()
     })
 
-    it('should render terminal component', () => {
+    it('should render terminal component', async () => {
       const onClose = vi.fn()
       renderWithProviders(<TerminalPanel onClose={onClose} />)
+
+      // Wait for async effects
+      await waitFor(() => {
+        expect(mockTerminalSpawn).toHaveBeenCalled()
+      })
 
       expect(screen.getByTestId('mock-terminal')).toBeInTheDocument()
     })
@@ -146,6 +166,11 @@ describe('TerminalPanel', () => {
       const onClose = vi.fn()
       renderWithProviders(<TerminalPanel onClose={onClose} />)
 
+      // Wait for async effects
+      await waitFor(() => {
+        expect(mockTerminalSpawn).toHaveBeenCalled()
+      })
+
       const closeButton = screen.getByRole('button')
       fireEvent.click(closeButton)
 
@@ -217,25 +242,40 @@ describe('TerminalPanel', () => {
   })
 
   describe('styling', () => {
-    it('should have dark background', () => {
+    it('should have dark background', async () => {
       const onClose = vi.fn()
       const { container } = renderWithProviders(<TerminalPanel onClose={onClose} />)
+
+      // Wait for async effects
+      await waitFor(() => {
+        expect(mockTerminalSpawn).toHaveBeenCalled()
+      })
 
       const wrapper = container.firstChild as HTMLElement
       expect(wrapper.className).toContain('bg-')
     })
 
-    it('should have top border', () => {
+    it('should have top border', async () => {
       const onClose = vi.fn()
       const { container } = renderWithProviders(<TerminalPanel onClose={onClose} />)
+
+      // Wait for async effects
+      await waitFor(() => {
+        expect(mockTerminalSpawn).toHaveBeenCalled()
+      })
 
       const wrapper = container.firstChild
       expect(wrapper).toHaveClass('border-t')
     })
 
-    it('should have header with bottom border', () => {
+    it('should have header with bottom border', async () => {
       const onClose = vi.fn()
       const { container } = renderWithProviders(<TerminalPanel onClose={onClose} />)
+
+      // Wait for async effects
+      await waitFor(() => {
+        expect(mockTerminalSpawn).toHaveBeenCalled()
+      })
 
       const header = container.querySelector('.border-b')
       expect(header).toBeInTheDocument()

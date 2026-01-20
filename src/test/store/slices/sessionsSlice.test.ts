@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { configureStore } from '@reduxjs/toolkit'
 import sessionsReducer, {
   selectSession,
@@ -7,8 +7,16 @@ import sessionsReducer, {
   fetchSessions,
   fetchSession,
   refreshSessions,
+  hideProject,
+  unhideProject,
+  hideSession,
+  unhideSession,
+  toggleShowHidden,
+  selectVisibleProjectGroups,
+  selectHiddenCount,
 } from '@/store/slices/sessionsSlice'
 import type { ProjectGroup, Session } from '@/../electron/shared/types'
+import type { RootState } from '@/store'
 
 // Mock data
 const mockProjectGroups: ProjectGroup[] = [
@@ -306,6 +314,211 @@ describe('sessionsSlice', () => {
       store.dispatch({ type: fetchSessions.pending.type })
 
       expect(store.getState().sessions.error).toBeNull()
+    })
+  })
+
+  describe('hidden state actions', () => {
+    let localStorageMock: { [key: string]: string }
+
+    beforeEach(() => {
+      localStorageMock = {}
+      vi.spyOn(Storage.prototype, 'setItem').mockImplementation((key, value) => {
+        localStorageMock[key] = value
+      })
+      vi.spyOn(Storage.prototype, 'getItem').mockImplementation((key) => localStorageMock[key] || null)
+    })
+
+    afterEach(() => {
+      vi.restoreAllMocks()
+    })
+
+    describe('hideProject', () => {
+      it('should add project to hiddenProjects', () => {
+        store.dispatch(hideProject('-Users-test-project1'))
+
+        const state = store.getState().sessions
+        expect(state.hiddenProjects).toContain('-Users-test-project1')
+      })
+
+      it('should persist to localStorage', () => {
+        store.dispatch(hideProject('-Users-test-project1'))
+
+        expect(localStorage.setItem).toHaveBeenCalledWith(
+          'hiddenProjects',
+          JSON.stringify(['-Users-test-project1'])
+        )
+      })
+
+      it('should not duplicate project IDs', () => {
+        store.dispatch(hideProject('-Users-test-project1'))
+        store.dispatch(hideProject('-Users-test-project1'))
+
+        const state = store.getState().sessions
+        expect(state.hiddenProjects.filter((id) => id === '-Users-test-project1')).toHaveLength(1)
+      })
+    })
+
+    describe('unhideProject', () => {
+      it('should remove project from hiddenProjects', () => {
+        store.dispatch(hideProject('-Users-test-project1'))
+        store.dispatch(unhideProject('-Users-test-project1'))
+
+        const state = store.getState().sessions
+        expect(state.hiddenProjects).not.toContain('-Users-test-project1')
+      })
+
+      it('should persist to localStorage', () => {
+        store.dispatch(hideProject('-Users-test-project1'))
+        store.dispatch(unhideProject('-Users-test-project1'))
+
+        expect(localStorage.setItem).toHaveBeenLastCalledWith('hiddenProjects', JSON.stringify([]))
+      })
+    })
+
+    describe('hideSession', () => {
+      it('should add session to hiddenSessions', () => {
+        store.dispatch(hideSession('session-1'))
+
+        const state = store.getState().sessions
+        expect(state.hiddenSessions).toContain('session-1')
+      })
+
+      it('should persist to localStorage', () => {
+        store.dispatch(hideSession('session-1'))
+
+        expect(localStorage.setItem).toHaveBeenCalledWith(
+          'hiddenSessions',
+          JSON.stringify(['session-1'])
+        )
+      })
+
+      it('should not duplicate session IDs', () => {
+        store.dispatch(hideSession('session-1'))
+        store.dispatch(hideSession('session-1'))
+
+        const state = store.getState().sessions
+        expect(state.hiddenSessions.filter((id) => id === 'session-1')).toHaveLength(1)
+      })
+    })
+
+    describe('unhideSession', () => {
+      it('should remove session from hiddenSessions', () => {
+        store.dispatch(hideSession('session-1'))
+        store.dispatch(unhideSession('session-1'))
+
+        const state = store.getState().sessions
+        expect(state.hiddenSessions).not.toContain('session-1')
+      })
+
+      it('should persist to localStorage', () => {
+        store.dispatch(hideSession('session-1'))
+        store.dispatch(unhideSession('session-1'))
+
+        expect(localStorage.setItem).toHaveBeenLastCalledWith('hiddenSessions', JSON.stringify([]))
+      })
+    })
+
+    describe('toggleShowHidden', () => {
+      it('should toggle showHidden state', () => {
+        expect(store.getState().sessions.showHidden).toBe(false)
+
+        store.dispatch(toggleShowHidden())
+        expect(store.getState().sessions.showHidden).toBe(true)
+
+        store.dispatch(toggleShowHidden())
+        expect(store.getState().sessions.showHidden).toBe(false)
+      })
+
+      it('should persist to localStorage', () => {
+        store.dispatch(toggleShowHidden())
+
+        expect(localStorage.setItem).toHaveBeenCalledWith('showHidden', 'true')
+      })
+    })
+  })
+
+  describe('selectors', () => {
+    describe('selectVisibleProjectGroups', () => {
+      it('should return all groups when showHidden is true', () => {
+        // Set up state with project groups
+        store.dispatch({
+          type: fetchSessions.fulfilled.type,
+          payload: mockProjectGroups,
+        })
+        store.dispatch(hideProject('-Users-test-project1'))
+        store.dispatch(toggleShowHidden()) // showHidden = true
+
+        const state = store.getState() as RootState
+        const visible = selectVisibleProjectGroups(state)
+
+        expect(visible).toHaveLength(1)
+        expect(visible[0].projectEncoded).toBe('-Users-test-project1')
+      })
+
+      it('should filter out hidden projects when showHidden is false', () => {
+        store.dispatch({
+          type: fetchSessions.fulfilled.type,
+          payload: mockProjectGroups,
+        })
+        store.dispatch(hideProject('-Users-test-project1'))
+
+        const state = store.getState() as RootState
+        const visible = selectVisibleProjectGroups(state)
+
+        expect(visible).toHaveLength(0)
+      })
+
+      it('should filter out hidden sessions within visible projects', () => {
+        store.dispatch({
+          type: fetchSessions.fulfilled.type,
+          payload: mockProjectGroups,
+        })
+        store.dispatch(hideSession('session-1'))
+
+        const state = store.getState() as RootState
+        const visible = selectVisibleProjectGroups(state)
+
+        expect(visible).toHaveLength(1)
+        expect(visible[0].sessions).toHaveLength(1)
+        expect(visible[0].sessions[0].id).toBe('session-2')
+      })
+
+      it('should remove project groups with no visible sessions', () => {
+        store.dispatch({
+          type: fetchSessions.fulfilled.type,
+          payload: mockProjectGroups,
+        })
+        // Hide all sessions in the group
+        store.dispatch(hideSession('session-1'))
+        store.dispatch(hideSession('session-2'))
+
+        const state = store.getState() as RootState
+        const visible = selectVisibleProjectGroups(state)
+
+        expect(visible).toHaveLength(0)
+      })
+    })
+
+    describe('selectHiddenCount', () => {
+      it('should return count of hidden projects and sessions', () => {
+        store.dispatch(hideProject('-Users-test-project1'))
+        store.dispatch(hideProject('-Users-test-project2'))
+        store.dispatch(hideSession('session-1'))
+
+        const state = store.getState() as RootState
+        const counts = selectHiddenCount(state)
+
+        expect(counts.projects).toBe(2)
+        expect(counts.sessions).toBe(1)
+      })
+
+      it('should return zero when nothing is hidden', () => {
+        const state = store.getState() as RootState
+        const counts = selectHiddenCount(state)
+
+        expect(counts.projects).toBe(0)
+        expect(counts.sessions).toBe(0)
+      })
     })
   })
 })

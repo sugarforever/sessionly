@@ -81,40 +81,54 @@ describe('useSessions', () => {
       })
     })
 
-    it('should return state values', () => {
+    it('should return state values', async () => {
       const store = createTestStore()
 
       const { result } = renderHook(() => useSessions(), {
         wrapper: createWrapper(store),
       })
 
-      // These are the default values before/while fetchSessions runs
+      // Wait for initial fetch to complete
+      await waitFor(() => {
+        expect(result.current.isLoading).toBe(false)
+      })
+
+      // These are the default values after fetchSessions completes
       expect(result.current.projectGroups).toEqual([])
       expect(result.current.currentSession).toBeNull()
       expect(result.current.selectedSessionId).toBeNull()
       expect(result.current.selectedProjectEncoded).toBeNull()
-      // Note: isLoading may be true immediately since fetchSessions is called on mount
       expect(result.current.isLoadingSession).toBe(false)
       expect(result.current.error).toBeNull()
     })
   })
 
   describe('state values', () => {
-    it('should return projectGroups from state', () => {
+    it('should return projectGroups from state', async () => {
       const projectGroups = [
         createMockProjectGroup({ project: '/test/project1' }),
         createMockProjectGroup({ project: '/test/project2' }),
       ]
+      // Mock the API to return the same project groups
+      mockSessionsGetAll.mockResolvedValue({
+        success: true,
+        data: projectGroups,
+      })
       const store = createTestStore({ projectGroups })
 
       const { result } = renderHook(() => useSessions(), {
         wrapper: createWrapper(store),
       })
 
+      // Wait for initial fetch to complete
+      await waitFor(() => {
+        expect(mockSessionsGetAll).toHaveBeenCalled()
+      })
+
       expect(result.current.projectGroups).toEqual(projectGroups)
     })
 
-    it('should return currentSession from state', () => {
+    it('should return currentSession from state', async () => {
       const currentSession = createMockSession()
       const store = createTestStore({ currentSession })
 
@@ -122,10 +136,15 @@ describe('useSessions', () => {
         wrapper: createWrapper(store),
       })
 
+      // Wait for initial fetch to complete
+      await waitFor(() => {
+        expect(mockSessionsGetAll).toHaveBeenCalled()
+      })
+
       expect(result.current.currentSession).toEqual(currentSession)
     })
 
-    it('should return loading states', () => {
+    it('should return loading states', async () => {
       const store = createTestStore({
         isLoading: true,
         isLoadingSession: true,
@@ -135,8 +154,14 @@ describe('useSessions', () => {
         wrapper: createWrapper(store),
       })
 
+      // Check initial loading state synchronously (before async updates)
       expect(result.current.isLoading).toBe(true)
       expect(result.current.isLoadingSession).toBe(true)
+
+      // Wait for any pending updates
+      await waitFor(() => {
+        expect(mockSessionsGetAll).toHaveBeenCalled()
+      })
     })
 
     it('should return error from state after failed fetch', async () => {
@@ -157,7 +182,7 @@ describe('useSessions', () => {
       })
     })
 
-    it('should return selected session info', () => {
+    it('should return selected session info', async () => {
       const store = createTestStore({
         selectedSessionId: 'session-123',
         selectedProjectEncoded: '-test-project',
@@ -165,6 +190,11 @@ describe('useSessions', () => {
 
       const { result } = renderHook(() => useSessions(), {
         wrapper: createWrapper(store),
+      })
+
+      // Wait for initial fetch and session fetch to complete
+      await waitFor(() => {
+        expect(mockSessionsGet).toHaveBeenCalled()
       })
 
       expect(result.current.selectedSessionId).toBe('session-123')
@@ -180,8 +210,18 @@ describe('useSessions', () => {
         wrapper: createWrapper(store),
       })
 
+      // Wait for initial fetch to complete
+      await waitFor(() => {
+        expect(mockSessionsGetAll).toHaveBeenCalled()
+      })
+
       act(() => {
         result.current.selectSession('session-456', '-project-encoded')
+      })
+
+      // Wait for the triggered fetchSession to complete
+      await waitFor(() => {
+        expect(mockSessionsGet).toHaveBeenCalledWith('session-456', '-project-encoded')
       })
 
       expect(store.getState().sessions.selectedSessionId).toBe('session-456')
@@ -214,6 +254,11 @@ describe('useSessions', () => {
 
       const { result } = renderHook(() => useSessions(), {
         wrapper: createWrapper(store),
+      })
+
+      // Wait for initial fetch to complete
+      await waitFor(() => {
+        expect(mockSessionsGet).toHaveBeenCalled()
       })
 
       act(() => {
@@ -255,8 +300,10 @@ describe('useSessions', () => {
         wrapper: createWrapper(store),
       })
 
-      // Wait a bit to ensure no additional calls are made
-      await new Promise((resolve) => setTimeout(resolve, 100))
+      // Wait for initial fetch to complete
+      await waitFor(() => {
+        expect(mockSessionsGetAll).toHaveBeenCalled()
+      })
 
       expect(mockSessionsGet).not.toHaveBeenCalled()
     })
@@ -271,7 +318,10 @@ describe('useSessions', () => {
         wrapper: createWrapper(store),
       })
 
-      await new Promise((resolve) => setTimeout(resolve, 100))
+      // Wait for initial fetch to complete
+      await waitFor(() => {
+        expect(mockSessionsGetAll).toHaveBeenCalled()
+      })
 
       expect(mockSessionsGet).not.toHaveBeenCalled()
     })
@@ -286,7 +336,10 @@ describe('useSessions', () => {
         wrapper: createWrapper(store),
       })
 
-      await new Promise((resolve) => setTimeout(resolve, 100))
+      // Wait for initial fetch to complete
+      await waitFor(() => {
+        expect(mockSessionsGetAll).toHaveBeenCalled()
+      })
 
       expect(mockSessionsGet).not.toHaveBeenCalled()
     })
@@ -308,11 +361,16 @@ describe('useSessions', () => {
   })
 
   describe('returned functions are memoized', () => {
-    it('should return stable function references', () => {
+    it('should return stable function references', async () => {
       const store = createTestStore()
 
       const { result, rerender } = renderHook(() => useSessions(), {
         wrapper: createWrapper(store),
+      })
+
+      // Wait for initial fetch to complete
+      await waitFor(() => {
+        expect(mockSessionsGetAll).toHaveBeenCalled()
       })
 
       const firstSelectSession = result.current.selectSession

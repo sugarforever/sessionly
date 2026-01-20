@@ -7,10 +7,14 @@ import appReducer from '@/store/slices/appSlice'
 import type { ProjectGroup, Session, SessionSummary } from '@/../electron/shared/types'
 import type { ProcessedMessage, ThinkingBlock, ToolUseBlock } from '@/../electron/shared/session-types'
 
+// Counter for generating unique IDs
+let mockSessionCounter = 0
+
 // Mock session summary factory
 export function createMockSessionSummary(overrides: Partial<SessionSummary> = {}): SessionSummary {
+  const uniqueId = `session-${++mockSessionCounter}-${Math.random().toString(36).substring(7)}`
   return {
-    id: 'session-1',
+    id: overrides.id ?? uniqueId,
     project: '/Users/test/project1',
     projectEncoded: '-Users-test-project1',
     firstMessage: 'Help me with this code',
@@ -19,7 +23,7 @@ export function createMockSessionSummary(overrides: Partial<SessionSummary> = {}
     endTime: Date.now(),
     gitBranch: 'main',
     model: 'claude-3-opus',
-    filePath: '/path/to/session-1.jsonl',
+    filePath: overrides.filePath ?? `/path/to/${uniqueId}.jsonl`,
     ...overrides,
   }
 }

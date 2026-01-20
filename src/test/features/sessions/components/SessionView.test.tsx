@@ -155,13 +155,13 @@ describe('SessionView', () => {
       const terminalButton = screen.getByRole('button', { name: /terminal/i })
 
       // Initially not active
-      expect(terminalButton).not.toHaveClass('bg-zinc-800')
+      expect(terminalButton).not.toHaveClass('bg-accent')
 
       // Click to open
       fireEvent.click(terminalButton)
 
       // Should have active class
-      expect(terminalButton).toHaveClass('bg-zinc-800')
+      expect(terminalButton).toHaveClass('bg-accent')
     })
   })
 

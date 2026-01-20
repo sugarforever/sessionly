@@ -186,7 +186,10 @@ describe('CodeBlock', () => {
       const copyButton = screen.getByRole('button')
       fireEvent.click(copyButton)
 
-      expect(mockWriteText).toHaveBeenCalledWith(code)
+      // Wait for the state update after clicking
+      await waitFor(() => {
+        expect(mockWriteText).toHaveBeenCalledWith(code)
+      })
     })
 
     it('should show check icon after copying', async () => {
@@ -201,14 +204,16 @@ describe('CodeBlock', () => {
       })
     })
 
-    it('should have copy button that works', () => {
+    it('should have copy button that works', async () => {
       renderWithProviders(<CodeBlock code="test code" filename="test.ts" />)
 
       const copyButton = screen.getByRole('button')
       fireEvent.click(copyButton)
 
-      // Verify clipboard write was called
-      expect(mockWriteText).toHaveBeenCalledWith('test code')
+      // Wait for the state update after clicking
+      await waitFor(() => {
+        expect(mockWriteText).toHaveBeenCalledWith('test code')
+      })
     })
   })
 

@@ -1,29 +1,41 @@
 import { describe, it, expect } from 'vitest'
-import { render, screen } from '@testing-library/react'
+import { render, screen, waitFor } from '@testing-library/react'
 import { Provider } from 'react-redux'
 import { store } from '../store'
+import { ThemeProvider } from '../contexts/ThemeContext'
 import App from '../App'
 
 describe('App', () => {
-  it('renders the app with navigation', () => {
+  it('renders the app with navigation', async () => {
     render(
       <Provider store={store}>
-        <App />
+        <ThemeProvider>
+          <App />
+        </ThemeProvider>
       </Provider>
     )
-    // Should show Sessions in the sidebar - use getAllByText since it appears multiple times
-    const sessionsElements = screen.getAllByText('Sessions')
-    expect(sessionsElements.length).toBeGreaterThan(0)
+
+    // Wait for async effects to complete (ThemeProvider, SessionsPage)
+    await waitFor(() => {
+      const sessionsElements = screen.getAllByText('Sessions')
+      expect(sessionsElements.length).toBeGreaterThan(0)
+    })
   })
 
-  it('renders the sidebar navigation items', () => {
+  it('renders the sidebar navigation items', async () => {
     render(
       <Provider store={store}>
-        <App />
+        <ThemeProvider>
+          <App />
+        </ThemeProvider>
       </Provider>
     )
-    // Use getAllByText for items that appear multiple times
-    expect(screen.getAllByText('Sessions').length).toBeGreaterThan(0)
+
+    // Wait for async effects to complete
+    await waitFor(() => {
+      expect(screen.getAllByText('Sessions').length).toBeGreaterThan(0)
+    })
+
     // Check for navigation icons - Sessions (history) and About (info)
     const historyIcon = document.querySelector('svg.lucide-history')
     const aboutIcon = document.querySelector('svg.lucide-info')

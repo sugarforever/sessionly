@@ -180,14 +180,14 @@ describe('SessionHeader', () => {
       renderWithProviders(<SessionHeader {...defaultProps} showTerminal={true} />)
 
       const terminalButton = screen.getByRole('button', { name: /terminal/i })
-      expect(terminalButton).toHaveClass('bg-zinc-800')
+      expect(terminalButton).toHaveClass('bg-accent')
     })
 
     it('should not have active styling when showTerminal is false', () => {
       renderWithProviders(<SessionHeader {...defaultProps} showTerminal={false} />)
 
       const terminalButton = screen.getByRole('button', { name: /terminal/i })
-      expect(terminalButton).not.toHaveClass('bg-zinc-800')
+      expect(terminalButton).not.toHaveClass('bg-accent')
     })
 
     it('should show terminal icon', () => {
