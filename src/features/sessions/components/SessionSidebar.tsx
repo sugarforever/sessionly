@@ -74,7 +74,7 @@ export function SessionSidebar({
             disabled={isLoading}
             className="h-8 w-8 shrink-0 text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800/50"
           >
-            {isLoading ? (
+            {isLoading && projectGroups.length > 0 ? (
               <Loader2 className="h-4 w-4 animate-spin" />
             ) : (
               <RefreshCw className="h-4 w-4" />
