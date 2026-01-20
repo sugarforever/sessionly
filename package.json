@@ -1,9 +1,9 @@
 {
-  "name": "claude-sessions",
+  "name": "sessionly",
   "version": "1.0.0",
   "description": "Desktop application for browsing and managing Claude Code CLI session history",
   "main": "dist-electron/main/index.js",
-  "author": "Claude Sessions",
+  "author": "Sessionly",
   "license": "MIT",
   "private": true,
   "scripts": {
@@ -77,8 +77,8 @@
     "vitest": "^2.1.2"
   },
   "build": {
-    "appId": "com.claude.sessions",
-    "productName": "Claude Sessions",
+    "appId": "app.sessionly",
+    "productName": "Sessionly",
     "directories": {
       "output": "release/${version}"
     },

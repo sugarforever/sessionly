@@ -33,7 +33,7 @@ function createWindow() {
       contextIsolation: true,
       nodeIntegration: false,
     },
-    title: 'Electron Boilerplate',
+    title: 'Sessionly',
     backgroundColor: '#ffffff',
   })
 

@@ -47,7 +47,10 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
       {/* Header with toggle */}
       <div className="flex h-14 items-center justify-between border-b border-border px-3">
         {!collapsed && (
-          <span className="text-sm font-semibold text-foreground truncate">Claude Sessions</span>
+          <div className="flex items-center gap-2">
+            <img src="/icon.png" alt="Sessionly" className="h-6 w-6 rounded" />
+            <span className="text-sm font-semibold text-foreground truncate">Sessionly</span>
+          </div>
         )}
         <Button
           variant="ghost"

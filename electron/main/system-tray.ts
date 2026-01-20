@@ -8,7 +8,7 @@ export function createSystemTray(mainWindow: BrowserWindow | null): Tray {
   const icon = nativeImage.createFromPath(iconPath).resize({ width: 16, height: 16 })
 
   const tray = new Tray(icon)
-  tray.setToolTip('Electron Boilerplate')
+  tray.setToolTip('Sessionly')
 
   const contextMenu = Menu.buildFromTemplate([
     {
