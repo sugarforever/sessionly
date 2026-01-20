@@ -32,14 +32,14 @@ export function CodeBlock({ code, language, filename }: CodeBlockProps) {
   const detectedLanguage = language || (filename ? getLanguageFromFilename(filename) : undefined)
 
   return (
-    <div className="group relative rounded-md border border-zinc-800/50 bg-zinc-950/80 overflow-hidden">
+    <div className="group relative rounded-md border border-border bg-secondary overflow-hidden">
       {filename && (
-        <div className="flex items-center justify-between border-b border-zinc-800/50 bg-zinc-900/50 px-3 py-1.5">
-          <span className="font-mono text-[10px] text-zinc-500">{filename}</span>
+        <div className="flex items-center justify-between border-b border-border bg-muted px-3 py-1.5">
+          <span className="font-mono text-[10px] text-muted-foreground">{filename}</span>
           <Button
             variant="ghost"
             size="sm"
-            className="h-5 w-5 p-0 text-zinc-600 hover:text-zinc-400 hover:bg-zinc-800/50"
+            className="h-5 w-5 p-0 text-muted-foreground hover:text-foreground hover:bg-accent"
             onClick={handleCopy}
           >
             {copied ? <Check className="h-2.5 w-2.5" /> : <Copy className="h-2.5 w-2.5" />}
@@ -50,13 +50,13 @@ export function CodeBlock({ code, language, filename }: CodeBlockProps) {
         <Button
           variant="ghost"
           size="sm"
-          className="absolute right-1.5 top-1.5 h-5 w-5 p-0 text-zinc-600 hover:text-zinc-400 hover:bg-zinc-800/50 opacity-0 group-hover:opacity-100 transition-opacity"
+          className="absolute right-1.5 top-1.5 h-5 w-5 p-0 text-muted-foreground hover:text-foreground hover:bg-accent opacity-0 group-hover:opacity-100 transition-opacity"
           onClick={handleCopy}
         >
           {copied ? <Check className="h-2.5 w-2.5" /> : <Copy className="h-2.5 w-2.5" />}
         </Button>
       )}
-      <div className="overflow-x-auto scrollbar-thin scrollbar-thumb-zinc-800 scrollbar-track-transparent">
+      <div className="overflow-x-auto scrollbar-thin">
         <pre className="p-3 text-[11px]">
           <code ref={codeRef} className={detectedLanguage ? `language-${detectedLanguage}` : ''}>
             {code}

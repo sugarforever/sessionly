@@ -30,9 +30,15 @@ export interface TerminalSpawnOptions {
   fork?: boolean
 }
 
+export type NativeTheme = 'dark' | 'light'
+
 export interface ElectronAPI {
   // App
   getVersion: () => Promise<IpcResponse<string>>
+
+  // Theme
+  getNativeTheme: () => Promise<IpcResponse<NativeTheme>>
+  onThemeChange: (callback: (theme: NativeTheme) => void) => () => void
 
   // Notifications
   showNotification: (options: NotificationOptions) => Promise<IpcResponse<void>>
@@ -60,6 +66,8 @@ export interface ElectronAPI {
 
 export type IpcChannels =
   | 'app:getVersion'
+  | 'theme:getNative'
+  | 'theme:changed'
   | 'notification:show'
   | 'shell:openExternal'
   | 'sessions:getAll'

@@ -47,30 +47,30 @@ export function SessionHeader({ session, showTerminal, onToggleTerminal }: Sessi
   }, [session.startTime, session.endTime])
 
   return (
-    <div className="shrink-0 border-b border-zinc-800/50 bg-[#0f0f0f] px-4 py-3">
+    <div className="shrink-0 border-b border-border bg-card px-4 py-3">
       <div className="flex items-center justify-between">
         <div className="flex flex-wrap items-center gap-3">
           {/* Project */}
           <div className="flex items-center gap-1.5">
-            <Folder className="h-3.5 w-3.5 text-zinc-600" />
+            <Folder className="h-3.5 w-3.5 text-muted-foreground/60" />
             <span
-              className="font-mono text-xs text-zinc-400 truncate max-w-[250px]"
+              className="font-mono text-xs text-muted-foreground truncate max-w-[250px]"
               title={session.project}
             >
               {session.project}
             </span>
           </div>
 
-          <span className="text-zinc-800">|</span>
+          <span className="text-border">|</span>
 
           {/* Branch */}
           {session.gitBranch && (
             <>
               <div className="flex items-center gap-1.5">
-                <GitBranch className="h-3.5 w-3.5 text-zinc-600" />
-                <span className="text-xs text-zinc-500">{session.gitBranch}</span>
+                <GitBranch className="h-3.5 w-3.5 text-muted-foreground/60" />
+                <span className="text-xs text-muted-foreground">{session.gitBranch}</span>
               </div>
-              <span className="text-zinc-800">|</span>
+              <span className="text-border">|</span>
             </>
           )}
 
@@ -78,25 +78,25 @@ export function SessionHeader({ session, showTerminal, onToggleTerminal }: Sessi
           {formattedDate && (
             <>
               <div className="flex items-center gap-1.5" title={formattedDate.full}>
-                <Clock className="h-3.5 w-3.5 text-zinc-600" />
-                <span className="text-xs text-zinc-500">{formattedDate.relative}</span>
-                {duration && <span className="text-xs text-zinc-700">({duration})</span>}
+                <Clock className="h-3.5 w-3.5 text-muted-foreground/60" />
+                <span className="text-xs text-muted-foreground">{formattedDate.relative}</span>
+                {duration && <span className="text-xs text-muted-foreground/50">({duration})</span>}
               </div>
-              <span className="text-zinc-800">|</span>
+              <span className="text-border">|</span>
             </>
           )}
 
           {/* Message Count */}
           <div className="flex items-center gap-1.5">
-            <MessageSquare className="h-3.5 w-3.5 text-zinc-600" />
-            <span className="text-xs text-zinc-500">{session.messages.length}</span>
+            <MessageSquare className="h-3.5 w-3.5 text-muted-foreground/60" />
+            <span className="text-xs text-muted-foreground">{session.messages.length}</span>
           </div>
 
           {/* Version */}
           {session.version && (
             <Badge
               variant="secondary"
-              className="h-5 bg-zinc-900 px-1.5 font-mono text-[10px] text-zinc-500 hover:bg-zinc-900"
+              className="h-5 bg-secondary px-1.5 font-mono text-[10px] text-muted-foreground hover:bg-secondary"
             >
               v{session.version}
             </Badge>
@@ -112,7 +112,7 @@ export function SessionHeader({ session, showTerminal, onToggleTerminal }: Sessi
             className={`h-7 px-2.5 text-xs transition-colors ${
               copied
                 ? 'bg-emerald-900/50 text-emerald-400 hover:bg-emerald-900/50'
-                : 'bg-zinc-800/80 text-zinc-300 hover:bg-zinc-700 hover:text-zinc-100'
+                : 'bg-accent text-foreground hover:bg-accent/80'
             }`}
             title={`Copy: ${resumeCommand}`}
           >
@@ -134,8 +134,8 @@ export function SessionHeader({ session, showTerminal, onToggleTerminal }: Sessi
             onClick={onToggleTerminal}
             className={`h-7 px-2.5 text-xs ${
               showTerminal
-                ? 'bg-zinc-800 text-zinc-200'
-                : 'text-zinc-500 hover:text-zinc-300 hover:bg-zinc-800/50'
+                ? 'bg-accent text-foreground'
+                : 'text-muted-foreground hover:text-foreground hover:bg-accent'
             }`}
           >
             <TerminalSquare className="mr-1.5 h-3.5 w-3.5" />

@@ -7,6 +7,17 @@ const electronAPI: ElectronAPI = {
   // App
   getVersion: () => ipcRenderer.invoke('app:getVersion'),
 
+  // Theme
+  getNativeTheme: () => ipcRenderer.invoke('theme:getNative'),
+  onThemeChange: (callback) => {
+    const subscription = (_event: Electron.IpcRendererEvent, theme: 'dark' | 'light') =>
+      callback(theme)
+    ipcRenderer.on('theme:changed', subscription)
+    return () => {
+      ipcRenderer.removeListener('theme:changed', subscription)
+    }
+  },
+
   // Notifications
   showNotification: (options) => ipcRenderer.invoke('notification:show', options),
 

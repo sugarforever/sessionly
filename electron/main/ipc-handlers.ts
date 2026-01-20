@@ -1,7 +1,31 @@
-import { ipcMain, Notification, shell, BrowserWindow } from 'electron'
+import { ipcMain, Notification, shell, BrowserWindow, nativeTheme } from 'electron'
 import type { IpcResponse, ProjectGroup, Session, TerminalSpawnOptions } from '../shared/types'
 
 export function setupIPC() {
+  // ============================================================================
+  // Theme - Native theme detection
+  // ============================================================================
+
+  // Get current native theme (dark or light)
+  ipcMain.handle('theme:getNative', async (): Promise<IpcResponse<'dark' | 'light'>> => {
+    try {
+      const isDark = nativeTheme.shouldUseDarkColors
+      return { success: true, data: isDark ? 'dark' : 'light' }
+    } catch (error) {
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Failed to get native theme',
+      }
+    }
+  })
+
+  // Listen for native theme changes and broadcast to all windows
+  nativeTheme.on('updated', () => {
+    const isDark = nativeTheme.shouldUseDarkColors
+    BrowserWindow.getAllWindows().forEach((window) => {
+      window.webContents.send('theme:changed', isDark ? 'dark' : 'light')
+    })
+  })
   // Get app version
   ipcMain.handle('app:getVersion', async (): Promise<IpcResponse<string>> => {
     try {

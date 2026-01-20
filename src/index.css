@@ -86,7 +86,7 @@
   }
 }
 
-/* Custom scrollbar styling */
+/* Custom scrollbar styling - Light mode */
 ::-webkit-scrollbar {
   width: 8px;
   height: 8px;
@@ -97,15 +97,24 @@
 }
 
 ::-webkit-scrollbar-thumb {
-  background: hsl(0 0% 20%);
+  background: hsl(0 0% 80%);
   border-radius: 4px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
+  background: hsl(0 0% 70%);
+}
+
+/* Custom scrollbar styling - Dark mode */
+.dark ::-webkit-scrollbar-thumb {
+  background: hsl(0 0% 20%);
+}
+
+.dark ::-webkit-scrollbar-thumb:hover {
   background: hsl(0 0% 30%);
 }
 
-/* Thin scrollbar utility class */
+/* Thin scrollbar utility class - Light mode */
 .scrollbar-thin::-webkit-scrollbar {
   width: 6px;
   height: 6px;
@@ -116,11 +125,20 @@
 }
 
 .scrollbar-thin::-webkit-scrollbar-thumb {
-  background: hsl(0 0% 25%);
+  background: hsl(0 0% 75%);
   border-radius: 3px;
 }
 
 .scrollbar-thin::-webkit-scrollbar-thumb:hover {
+  background: hsl(0 0% 65%);
+}
+
+/* Thin scrollbar utility class - Dark mode */
+.dark .scrollbar-thin::-webkit-scrollbar-thumb {
+  background: hsl(0 0% 25%);
+}
+
+.dark .scrollbar-thin::-webkit-scrollbar-thumb:hover {
   background: hsl(0 0% 35%);
 }
 
@@ -137,7 +155,7 @@
   background: transparent;
 }
 
-/* Thinner scrollbar for textarea to avoid border overlap */
+/* Thinner scrollbar for textarea - Light mode */
 textarea::-webkit-scrollbar {
   width: 6px;
 }
@@ -148,6 +166,11 @@ textarea::-webkit-scrollbar-track {
 }
 
 textarea::-webkit-scrollbar-thumb {
-  background: hsl(0 0% 25%);
+  background: hsl(0 0% 75%);
   border-radius: 3px;
+}
+
+/* Thinner scrollbar for textarea - Dark mode */
+.dark textarea::-webkit-scrollbar-thumb {
+  background: hsl(0 0% 25%);
 }

@@ -46,7 +46,7 @@ export function ProjectGroup({
     <div className="mb-1">
       {/* Header */}
       <div
-        className={`group flex w-full items-center gap-1.5 px-2 py-1.5 rounded-md hover:bg-zinc-800/50 transition-all duration-150 ${
+        className={`group flex w-full items-center gap-1.5 px-2 py-1.5 rounded-md hover:bg-accent/50 transition-all duration-150 ${
           isHidden ? 'opacity-50 border-l-2 border-l-amber-400/50' : ''
         }`}
       >
@@ -55,34 +55,34 @@ export function ProjectGroup({
           className="flex flex-1 items-center gap-1.5 cursor-pointer min-w-0"
         >
           {expanded ? (
-            <ChevronDown className="h-3.5 w-3.5 text-zinc-600 shrink-0" />
+            <ChevronDown className="h-3.5 w-3.5 text-muted-foreground/60 shrink-0" />
           ) : (
-            <ChevronRight className="h-3.5 w-3.5 text-zinc-600 shrink-0" />
+            <ChevronRight className="h-3.5 w-3.5 text-muted-foreground/60 shrink-0" />
           )}
-          <Folder className={`h-3.5 w-3.5 shrink-0 ${isHidden ? 'text-amber-400/70' : 'text-zinc-600'}`} />
-          <span className="text-xs font-medium text-zinc-400 truncate" title={group.project}>
+          <Folder className={`h-3.5 w-3.5 shrink-0 ${isHidden ? 'text-amber-400/70' : 'text-muted-foreground/60'}`} />
+          <span className="text-xs font-medium text-muted-foreground truncate" title={group.project}>
             {shortName}
           </span>
         </button>
         <button
           onClick={handleHideClick}
-          className="opacity-0 group-hover:opacity-100 transition-opacity p-0.5 hover:bg-zinc-700/50 rounded shrink-0"
+          className="opacity-0 group-hover:opacity-100 transition-opacity p-0.5 hover:bg-accent rounded shrink-0"
           title={isHidden ? 'Unhide project' : 'Hide project'}
         >
           {isHidden ? (
-            <Eye className="h-3 w-3 text-amber-400" />
+            <Eye className="h-3 w-3 text-amber-500" />
           ) : (
-            <EyeOff className="h-3 w-3 text-zinc-500" />
+            <EyeOff className="h-3 w-3 text-muted-foreground" />
           )}
         </button>
-        <span className="text-[10px] text-zinc-700 tabular-nums shrink-0">
+        <span className="text-[10px] text-muted-foreground/50 tabular-nums shrink-0">
           {group.sessions.length}
         </span>
       </div>
 
       {/* Sessions */}
       {expanded && (
-        <div className="ml-3 mt-0.5 space-y-0.5 border-l border-zinc-800/50 pl-2">
+        <div className="ml-3 mt-0.5 space-y-0.5 border-l border-border pl-2">
           {group.sessions.map((session) => (
             <SessionItem
               key={session.filePath}

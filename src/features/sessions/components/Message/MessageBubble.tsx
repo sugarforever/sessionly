@@ -72,11 +72,11 @@ export function MessageBubble({ message, subagents, showTimestamp = true }: Mess
       {/* Avatar */}
       <div
         className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full ${
-          isUser ? 'bg-zinc-800' : 'bg-gradient-to-br from-orange-500 to-amber-600'
+          isUser ? 'bg-secondary' : 'bg-gradient-to-br from-orange-500 to-amber-600'
         }`}
       >
         {isUser ? (
-          <User className="h-3.5 w-3.5 text-zinc-400" />
+          <User className="h-3.5 w-3.5 text-muted-foreground" />
         ) : (
           <Sparkles className="h-3.5 w-3.5 text-white" />
         )}
@@ -86,12 +86,12 @@ export function MessageBubble({ message, subagents, showTimestamp = true }: Mess
       <div className={`flex-1 min-w-0 space-y-2 ${isUser ? 'items-end' : ''}`}>
         {/* Header */}
         <div className={`flex items-center gap-2 ${isUser ? 'flex-row-reverse' : ''}`}>
-          <span className="text-xs font-medium text-zinc-400">{isUser ? 'You' : 'Claude'}</span>
+          <span className="text-xs font-medium text-muted-foreground">{isUser ? 'You' : 'Claude'}</span>
           {showTimestamp && formattedTime && (
-            <span className="text-[10px] text-zinc-700 tabular-nums">{formattedTime}</span>
+            <span className="text-[10px] text-muted-foreground/50 tabular-nums">{formattedTime}</span>
           )}
           {message.model && !isUser && (
-            <span className="text-[10px] text-zinc-700 font-mono">{message.model}</span>
+            <span className="text-[10px] text-muted-foreground/50 font-mono">{message.model}</span>
           )}
         </div>
 
@@ -105,8 +105,8 @@ export function MessageBubble({ message, subagents, showTimestamp = true }: Mess
           <div
             className={`rounded-lg px-3.5 py-2.5 ${
               isUser
-                ? 'bg-zinc-800/80 text-zinc-200'
-                : 'bg-zinc-900/50 border border-zinc-800/50 text-zinc-300'
+                ? 'bg-secondary text-foreground'
+                : 'bg-card border border-border text-foreground'
             }`}
           >
             <div className="space-y-3 text-xs leading-relaxed">{renderedContent}</div>

@@ -41,15 +41,15 @@ export function SessionSidebar({
   const totalHidden = hiddenCount.projects + hiddenCount.sessions
 
   return (
-    <div className="flex h-full flex-col border-r border-zinc-800/50 bg-[#0f0f0f]">
+    <div className="flex h-full flex-col border-r border-border bg-card">
       {/* Header */}
-      <div className="flex h-14 shrink-0 items-center justify-between border-b border-zinc-800/50 px-4">
+      <div className="flex h-14 shrink-0 items-center justify-between border-b border-border px-4">
         <div className="min-w-0">
-          <h2 className="text-sm font-semibold text-zinc-100">Sessions</h2>
-          <p className="text-xs text-zinc-500 truncate">
+          <h2 className="text-sm font-semibold text-foreground">Sessions</h2>
+          <p className="text-xs text-muted-foreground truncate">
             {totalSessions} in {projectGroups.length} project{projectGroups.length !== 1 ? 's' : ''}
             {totalHidden > 0 && !showHidden && (
-              <span className="ml-1 text-zinc-600">({totalHidden} hidden)</span>
+              <span className="ml-1 opacity-60">({totalHidden} hidden)</span>
             )}
           </p>
         </div>
@@ -59,8 +59,8 @@ export function SessionSidebar({
               variant="ghost"
               size="icon"
               onClick={onToggleShowHidden}
-              className={`h-8 w-8 shrink-0 hover:bg-zinc-800/50 ${
-                showHidden ? 'text-amber-400 hover:text-amber-300' : 'text-zinc-400 hover:text-zinc-200'
+              className={`h-8 w-8 shrink-0 hover:bg-accent ${
+                showHidden ? 'text-amber-500 hover:text-amber-400' : 'text-muted-foreground hover:text-foreground'
               }`}
               title={showHidden ? 'Hide hidden items' : 'Show hidden items'}
             >
@@ -72,7 +72,7 @@ export function SessionSidebar({
             size="icon"
             onClick={onRefresh}
             disabled={isLoading}
-            className="h-8 w-8 shrink-0 text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800/50"
+            className="h-8 w-8 shrink-0 text-muted-foreground hover:text-foreground hover:bg-accent"
           >
             {isLoading && projectGroups.length > 0 ? (
               <Loader2 className="h-4 w-4 animate-spin" />
@@ -84,17 +84,17 @@ export function SessionSidebar({
       </div>
 
       {/* Session List - Scrollable */}
-      <div className="flex-1 overflow-y-auto scrollbar-thin scrollbar-thumb-zinc-700 scrollbar-track-transparent">
+      <div className="flex-1 overflow-y-auto scrollbar-thin">
         <div className="p-2">
           {isLoading && projectGroups.length === 0 ? (
             <div className="flex h-40 items-center justify-center">
-              <Loader2 className="h-5 w-5 animate-spin text-zinc-500" />
+              <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
             </div>
           ) : projectGroups.length === 0 ? (
             <div className="flex h-40 items-center justify-center px-4 text-center">
               <div>
-                <p className="text-sm text-zinc-400">No sessions found</p>
-                <p className="mt-1 text-xs text-zinc-600">
+                <p className="text-sm text-muted-foreground">No sessions found</p>
+                <p className="mt-1 text-xs text-muted-foreground opacity-60">
                   Sessions appear after using Claude Code CLI
                 </p>
               </div>

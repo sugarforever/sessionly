@@ -10,6 +10,9 @@ afterEach(() => {
 // Mock electron API for tests
 global.window.electron = {
   getVersion: async () => ({ success: true, data: '1.0.0' }),
+  // Theme mocks
+  getNativeTheme: async () => ({ success: true, data: 'light' as const }),
+  onThemeChange: () => () => {},
   showNotification: async () => ({ success: true, data: undefined }),
   openExternal: async () => ({ success: true, data: undefined }),
   // Sessions mocks

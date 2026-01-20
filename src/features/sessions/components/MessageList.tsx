@@ -21,10 +21,10 @@ export function MessageList({ messages, subagents, scrollToBottom = false }: Mes
 
   if (messages.length === 0) {
     return (
-      <div className="flex h-full items-center justify-center bg-[#0a0a0a]">
+      <div className="flex h-full items-center justify-center bg-background">
         <div className="text-center">
-          <MessageSquareOff className="mx-auto h-8 w-8 text-zinc-800" />
-          <p className="mt-2 text-xs text-zinc-600">No messages in this session</p>
+          <MessageSquareOff className="mx-auto h-8 w-8 text-muted-foreground/30" />
+          <p className="mt-2 text-xs text-muted-foreground">No messages in this session</p>
         </div>
       </div>
     )
@@ -33,7 +33,7 @@ export function MessageList({ messages, subagents, scrollToBottom = false }: Mes
   return (
     <div
       ref={containerRef}
-      className="h-full overflow-y-auto bg-[#0a0a0a] scrollbar-thin scrollbar-thumb-zinc-800 scrollbar-track-transparent"
+      className="h-full overflow-y-auto bg-background scrollbar-thin"
     >
       <div className="space-y-4 max-w-4xl mx-auto px-6 py-6">
         {messages.map((message, index) => (

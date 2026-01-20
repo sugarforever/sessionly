@@ -52,19 +52,19 @@ export function SessionItem({
     <div
       className={`group w-full text-left px-2.5 py-2 rounded-md transition-all duration-150 cursor-pointer ${
         isSelected
-          ? 'bg-zinc-800/80 border-l-2 border-l-zinc-500 border-y border-r border-y-transparent border-r-transparent'
+          ? 'bg-accent border-l-2 border-l-primary border-y border-r border-y-transparent border-r-transparent'
           : isHidden
-            ? 'hover:bg-zinc-800/40 border-l-2 border-l-amber-400/50 opacity-50'
-            : 'hover:bg-zinc-800/40 border-l-2 border-transparent'
+            ? 'hover:bg-accent/50 border-l-2 border-l-amber-400/50 opacity-50'
+            : 'hover:bg-accent/50 border-l-2 border-transparent'
       }`}
       onClick={onSelect}
     >
       <div className="flex items-start justify-between gap-2">
         <div className="flex-1 min-w-0">
-          <p className={`text-xs truncate ${isSelected ? 'text-zinc-200' : 'text-zinc-400'}`}>
+          <p className={`text-xs truncate ${isSelected ? 'text-foreground' : 'text-muted-foreground'}`}>
             {preview}
           </p>
-          <div className="mt-1.5 flex items-center gap-2 text-[10px] text-zinc-600">
+          <div className="mt-1.5 flex items-center gap-2 text-[10px] text-muted-foreground/60">
             {session.gitBranch && (
               <span className="flex items-center gap-0.5 truncate max-w-[80px]">
                 <GitBranch className="h-2.5 w-2.5 shrink-0" />
@@ -80,17 +80,17 @@ export function SessionItem({
         <div className="flex items-center gap-1 shrink-0">
           <button
             onClick={handleHideClick}
-            className="opacity-0 group-hover:opacity-100 transition-opacity p-0.5 hover:bg-zinc-700/50 rounded"
+            className="opacity-0 group-hover:opacity-100 transition-opacity p-0.5 hover:bg-accent rounded"
             title={isHidden ? 'Unhide session' : 'Hide session'}
           >
             {isHidden ? (
-              <Eye className="h-3 w-3 text-amber-400" />
+              <Eye className="h-3 w-3 text-amber-500" />
             ) : (
-              <EyeOff className="h-3 w-3 text-zinc-500" />
+              <EyeOff className="h-3 w-3 text-muted-foreground" />
             )}
           </button>
           {formattedDate && (
-            <span className="text-[10px] text-zinc-700 tabular-nums">{formattedDate}</span>
+            <span className="text-[10px] text-muted-foreground/50 tabular-nums">{formattedDate}</span>
           )}
         </div>
       </div>
