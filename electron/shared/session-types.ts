@@ -38,12 +38,18 @@ export interface ToolUseBlock {
 }
 
 /**
+ * Tool result content types
+ */
+export type ToolResultContentItem = { type: 'text'; text: string } | { type: 'image'; source: unknown }
+export type ToolResultContent = string | ToolResultContentItem[]
+
+/**
  * Tool result content block (result from tool execution)
  */
 export interface ToolResultBlock {
   type: 'tool_result'
   tool_use_id: string
-  content: string | Array<{ type: 'text'; text: string } | { type: 'image'; source: unknown }>
+  content: ToolResultContent
   is_error?: boolean
 }
 

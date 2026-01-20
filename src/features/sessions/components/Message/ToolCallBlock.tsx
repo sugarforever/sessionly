@@ -1,8 +1,41 @@
 import { useState } from 'react'
 import { ChevronDown, ChevronRight, Wrench } from 'lucide-react'
-import type { ToolUseBlock, ToolResultBlock, SubagentSession } from '@/../electron/shared/session-types'
+import type {
+  ToolUseBlock,
+  ToolResultBlock,
+  SubagentSession,
+  ToolResultContent,
+} from '@/../electron/shared/session-types'
 import { CodeBlock } from './CodeBlock'
 import { SubagentBlock } from './SubagentBlock'
+
+const MAX_CONTENT_LENGTH = 2000
+
+const TOOL_DISPLAY_NAMES: Record<string, string> = {
+  Read: 'Read File',
+  Write: 'Write File',
+  Edit: 'Edit File',
+  Bash: 'Run Command',
+  Glob: 'Search Files',
+  Grep: 'Search Content',
+  Task: 'Launch Agent',
+  WebFetch: 'Fetch URL',
+  WebSearch: 'Web Search',
+  TodoWrite: 'Update Todos',
+}
+
+function renderToolResultContent(content: ToolResultContent): React.ReactNode {
+  if (typeof content === 'string') {
+    return content.slice(0, MAX_CONTENT_LENGTH)
+  }
+
+  return content.map((c, i) => {
+    if (c.type === 'text') {
+      return <span key={i}>{c.text}</span>
+    }
+    return <span key={i}>[image]</span>
+  })
+}
 
 interface ToolCallBlockProps {
   toolUse: ToolUseBlock
@@ -19,24 +52,7 @@ export function ToolCallBlock({
 }: ToolCallBlockProps) {
   const [expanded, setExpanded] = useState(defaultExpanded)
 
-  const getToolDisplayName = (name: string) => {
-    // Convert tool names to human-readable format
-    const nameMap: Record<string, string> = {
-      Read: 'Read File',
-      Write: 'Write File',
-      Edit: 'Edit File',
-      Bash: 'Run Command',
-      Glob: 'Search Files',
-      Grep: 'Search Content',
-      Task: 'Launch Agent',
-      WebFetch: 'Fetch URL',
-      WebSearch: 'Web Search',
-      TodoWrite: 'Update Todos',
-    }
-    return nameMap[name] || name
-  }
-
-  const getToolInputPreview = () => {
+  const getToolInputPreview = (): string | null => {
     const input = toolUse.input
     if (input.file_path) return input.file_path as string
     if (input.command) return (input.command as string).slice(0, 50)
@@ -60,7 +76,9 @@ export function ToolCallBlock({
           <ChevronRight className="h-3.5 w-3.5 text-muted-foreground/60 shrink-0" />
         )}
         <Wrench className="h-3.5 w-3.5 text-sky-500 shrink-0" />
-        <span className="text-xs font-medium text-muted-foreground">{getToolDisplayName(toolUse.name)}</span>
+        <span className="text-xs font-medium text-muted-foreground">
+          {TOOL_DISPLAY_NAMES[toolUse.name] || toolUse.name}
+        </span>
         {preview && !expanded && (
           <span className="ml-1 font-mono text-[10px] text-muted-foreground/60 truncate flex-1 min-w-0">
             {preview}
@@ -93,12 +111,8 @@ export function ToolCallBlock({
                     : 'bg-secondary text-muted-foreground border border-border'
                 }`}
               >
-                {typeof toolResult.content === 'string'
-                  ? toolResult.content.slice(0, 2000)
-                  : toolResult.content.map((c, i) => (
-                      <span key={i}>{c.type === 'text' ? c.text : '[image]'}</span>
-                    ))}
-                {typeof toolResult.content === 'string' && toolResult.content.length > 2000 && (
+                {renderToolResultContent(toolResult.content)}
+                {typeof toolResult.content === 'string' && toolResult.content.length > MAX_CONTENT_LENGTH && (
                   <span className="text-muted-foreground/50">... (truncated)</span>
                 )}
               </div>

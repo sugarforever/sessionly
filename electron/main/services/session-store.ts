@@ -582,7 +582,7 @@ async function parseSubagentFile(filePath: string): Promise<ProcessedMessage[]> 
           messages.push(processed)
         }
       }
-    } catch (e) {
+    } catch {
       // Skip malformed JSON lines
     }
   }

@@ -22,17 +22,22 @@ export function SessionItem({
 }: SessionItemProps) {
   const formattedDate = useMemo(() => {
     if (!session.startTime) return null
+
     const date = new Date(session.startTime)
     const now = new Date()
-    const diffDays = Math.floor((now.getTime() - date.getTime()) / (1000 * 60 * 60 * 24))
+    const msPerDay = 1000 * 60 * 60 * 24
+    const daysSinceSession = Math.floor((now.getTime() - date.getTime()) / msPerDay)
 
-    if (diffDays === 0) {
+    const isToday = daysSinceSession === 0
+    const isWithinWeek = daysSinceSession < 7
+
+    if (isToday) {
       return format(date, 'HH:mm')
-    } else if (diffDays < 7) {
-      return format(date, 'EEE HH:mm')
-    } else {
-      return format(date, 'MMM d')
     }
+    if (isWithinWeek) {
+      return format(date, 'EEE HH:mm')
+    }
+    return format(date, 'MMM d')
   }, [session.startTime])
 
   const preview = session.firstMessage
