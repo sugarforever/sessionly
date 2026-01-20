@@ -8,6 +8,9 @@ describe('SessionItem', () => {
     session: createMockSessionSummary(),
     isSelected: false,
     onSelect: vi.fn(),
+    isHidden: false,
+    onHide: vi.fn(),
+    onUnhide: vi.fn(),
   }
 
   beforeEach(() => {
@@ -123,15 +126,15 @@ describe('SessionItem', () => {
     it('should have selected styling when isSelected is true', () => {
       renderWithProviders(<SessionItem {...defaultProps} isSelected={true} />)
 
-      const button = screen.getByRole('button')
-      expect(button.className).toContain('border-l-2')
+      const sessionItem = document.querySelector('div.group.w-full')
+      expect(sessionItem?.className).toContain('border-l-2')
     })
 
     it('should have default styling when isSelected is false', () => {
       renderWithProviders(<SessionItem {...defaultProps} isSelected={false} />)
 
-      const button = screen.getByRole('button')
-      expect(button).toHaveClass('border-transparent')
+      const sessionItem = document.querySelector('div.group.w-full')
+      expect(sessionItem).toHaveClass('border-transparent')
     })
   })
 
@@ -140,8 +143,8 @@ describe('SessionItem', () => {
       const onSelect = vi.fn()
       renderWithProviders(<SessionItem {...defaultProps} onSelect={onSelect} />)
 
-      const button = screen.getByRole('button')
-      fireEvent.click(button)
+      const sessionItem = document.querySelector('div.group.w-full')
+      fireEvent.click(sessionItem!)
 
       expect(onSelect).toHaveBeenCalledTimes(1)
     })
@@ -149,9 +152,9 @@ describe('SessionItem', () => {
     it('should have hover styling', () => {
       renderWithProviders(<SessionItem {...defaultProps} isSelected={false} />)
 
-      const button = screen.getByRole('button')
+      const sessionItem = document.querySelector('div.group.w-full')
       // hover styling is applied via hover:bg-zinc-800/40
-      expect(button.className).toContain('hover:')
+      expect(sessionItem?.className).toContain('hover:')
     })
   })
 

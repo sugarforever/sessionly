@@ -1,4 +1,4 @@
-import { RefreshCw, Loader2 } from 'lucide-react'
+import { RefreshCw, Loader2, Eye, EyeOff } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import type { ProjectGroup as ProjectGroupType } from '@/../electron/shared/types'
 import { ProjectGroup } from './ProjectGroup'
@@ -9,6 +9,16 @@ interface SessionSidebarProps {
   isLoading: boolean
   onSelectSession: (sessionId: string, projectEncoded: string) => void
   onRefresh: () => void
+  // Hidden state props
+  showHidden: boolean
+  hiddenCount: { projects: number; sessions: number }
+  onToggleShowHidden: () => void
+  onHideProject: (projectEncoded: string) => void
+  onUnhideProject: (projectEncoded: string) => void
+  onHideSession: (sessionId: string) => void
+  onUnhideSession: (sessionId: string) => void
+  hiddenProjects: string[]
+  hiddenSessions: string[]
 }
 
 export function SessionSidebar({
@@ -17,8 +27,18 @@ export function SessionSidebar({
   isLoading,
   onSelectSession,
   onRefresh,
+  showHidden,
+  hiddenCount,
+  onToggleShowHidden,
+  onHideProject,
+  onUnhideProject,
+  onHideSession,
+  onUnhideSession,
+  hiddenProjects,
+  hiddenSessions,
 }: SessionSidebarProps) {
   const totalSessions = projectGroups.reduce((sum, g) => sum + g.sessions.length, 0)
+  const totalHidden = hiddenCount.projects + hiddenCount.sessions
 
   return (
     <div className="flex h-full flex-col border-r border-zinc-800/50 bg-[#0f0f0f]">
@@ -28,21 +48,39 @@ export function SessionSidebar({
           <h2 className="text-sm font-semibold text-zinc-100">Sessions</h2>
           <p className="text-xs text-zinc-500 truncate">
             {totalSessions} in {projectGroups.length} project{projectGroups.length !== 1 ? 's' : ''}
+            {totalHidden > 0 && !showHidden && (
+              <span className="ml-1 text-zinc-600">({totalHidden} hidden)</span>
+            )}
           </p>
         </div>
-        <Button
-          variant="ghost"
-          size="icon"
-          onClick={onRefresh}
-          disabled={isLoading}
-          className="h-8 w-8 shrink-0 text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800/50"
-        >
-          {isLoading ? (
-            <Loader2 className="h-4 w-4 animate-spin" />
-          ) : (
-            <RefreshCw className="h-4 w-4" />
+        <div className="flex items-center gap-1">
+          {totalHidden > 0 && (
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={onToggleShowHidden}
+              className={`h-8 w-8 shrink-0 hover:bg-zinc-800/50 ${
+                showHidden ? 'text-amber-400 hover:text-amber-300' : 'text-zinc-400 hover:text-zinc-200'
+              }`}
+              title={showHidden ? 'Hide hidden items' : 'Show hidden items'}
+            >
+              {showHidden ? <Eye className="h-4 w-4" /> : <EyeOff className="h-4 w-4" />}
+            </Button>
           )}
-        </Button>
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={onRefresh}
+            disabled={isLoading}
+            className="h-8 w-8 shrink-0 text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800/50"
+          >
+            {isLoading ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <RefreshCw className="h-4 w-4" />
+            )}
+          </Button>
+        </div>
       </div>
 
       {/* Session List - Scrollable */}
@@ -70,6 +108,12 @@ export function SessionSidebar({
                   selectedSessionId={selectedSessionId}
                   onSelectSession={onSelectSession}
                   defaultExpanded={false}
+                  isHidden={hiddenProjects.includes(group.projectEncoded)}
+                  onHide={onHideProject}
+                  onUnhide={onUnhideProject}
+                  onHideSession={onHideSession}
+                  onUnhideSession={onUnhideSession}
+                  hiddenSessions={hiddenSessions}
                 />
               ))}
             </div>

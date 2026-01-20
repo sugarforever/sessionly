@@ -1,15 +1,25 @@
 import { useMemo } from 'react'
 import { format } from 'date-fns'
-import { MessageSquare, GitBranch } from 'lucide-react'
+import { MessageSquare, GitBranch, Eye, EyeOff } from 'lucide-react'
 import type { SessionSummary } from '@/../electron/shared/types'
 
 interface SessionItemProps {
   session: SessionSummary
   isSelected: boolean
   onSelect: () => void
+  isHidden?: boolean
+  onHide: (sessionId: string) => void
+  onUnhide: (sessionId: string) => void
 }
 
-export function SessionItem({ session, isSelected, onSelect }: SessionItemProps) {
+export function SessionItem({
+  session,
+  isSelected,
+  onSelect,
+  isHidden = false,
+  onHide,
+  onUnhide,
+}: SessionItemProps) {
   const formattedDate = useMemo(() => {
     if (!session.startTime) return null
     const date = new Date(session.startTime)
@@ -29,14 +39,25 @@ export function SessionItem({ session, isSelected, onSelect }: SessionItemProps)
     ? session.firstMessage.slice(0, 60).replace(/\n/g, ' ')
     : 'No messages'
 
+  const handleHideClick = (e: React.MouseEvent) => {
+    e.stopPropagation()
+    if (isHidden) {
+      onUnhide(session.id)
+    } else {
+      onHide(session.id)
+    }
+  }
+
   return (
-    <button
-      onClick={onSelect}
-      className={`w-full text-left px-2.5 py-2 rounded-md transition-colors duration-150 cursor-pointer ${
+    <div
+      className={`group w-full text-left px-2.5 py-2 rounded-md transition-all duration-150 cursor-pointer ${
         isSelected
           ? 'bg-zinc-800/80 border-l-2 border-l-zinc-500 border-y border-r border-y-transparent border-r-transparent'
-          : 'hover:bg-zinc-800/40 border-l-2 border-transparent'
+          : isHidden
+            ? 'hover:bg-zinc-800/40 border-l-2 border-l-amber-400/50 opacity-50'
+            : 'hover:bg-zinc-800/40 border-l-2 border-transparent'
       }`}
+      onClick={onSelect}
     >
       <div className="flex items-start justify-between gap-2">
         <div className="flex-1 min-w-0">
@@ -56,10 +77,23 @@ export function SessionItem({ session, isSelected, onSelect }: SessionItemProps)
             </span>
           </div>
         </div>
-        {formattedDate && (
-          <span className="text-[10px] text-zinc-700 shrink-0 tabular-nums">{formattedDate}</span>
-        )}
+        <div className="flex items-center gap-1 shrink-0">
+          <button
+            onClick={handleHideClick}
+            className="opacity-0 group-hover:opacity-100 transition-opacity p-0.5 hover:bg-zinc-700/50 rounded"
+            title={isHidden ? 'Unhide session' : 'Hide session'}
+          >
+            {isHidden ? (
+              <Eye className="h-3 w-3 text-amber-400" />
+            ) : (
+              <EyeOff className="h-3 w-3 text-zinc-500" />
+            )}
+          </button>
+          {formattedDate && (
+            <span className="text-[10px] text-zinc-700 tabular-nums">{formattedDate}</span>
+          )}
+        </div>
       </div>
-    </button>
+    </div>
   )
 }

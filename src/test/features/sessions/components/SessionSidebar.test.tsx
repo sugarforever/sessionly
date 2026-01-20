@@ -14,6 +14,15 @@ describe('SessionSidebar', () => {
     isLoading: false,
     onSelectSession: vi.fn(),
     onRefresh: vi.fn(),
+    showHidden: false,
+    hiddenCount: { projects: 0, sessions: 0 },
+    onToggleShowHidden: vi.fn(),
+    onHideProject: vi.fn(),
+    onUnhideProject: vi.fn(),
+    onHideSession: vi.fn(),
+    onUnhideSession: vi.fn(),
+    hiddenProjects: [] as string[],
+    hiddenSessions: [] as string[],
   }
 
   beforeEach(() => {
@@ -211,7 +220,7 @@ describe('SessionSidebar', () => {
       fireEvent.click(projectButton)
 
       // The selected session should have different styling (border-l-2 with border-l-zinc-500)
-      const firstSession = screen.getByText(/First session/).closest('button')
+      const firstSession = screen.getByText(/First session/).closest('div.group')
       expect(firstSession?.className).toContain('border-l-2')
     })
   })

@@ -9,6 +9,12 @@ describe('ProjectGroup', () => {
     selectedSessionId: null,
     onSelectSession: vi.fn(),
     defaultExpanded: true,
+    isHidden: false,
+    onHide: vi.fn(),
+    onUnhide: vi.fn(),
+    onHideSession: vi.fn(),
+    onUnhideSession: vi.fn(),
+    hiddenSessions: [] as string[],
   }
 
   beforeEach(() => {
@@ -138,11 +144,11 @@ describe('ProjectGroup', () => {
       )
 
       // Second session should be selected (have border-l-2 class)
-      const secondSession = screen.getByText(/Second/).closest('button')
+      const secondSession = screen.getByText(/Second/).closest('div.group')
       expect(secondSession?.className).toContain('border-l-2')
 
       // First session should not be selected
-      const firstSession = screen.getByText(/First/).closest('button')
+      const firstSession = screen.getByText(/First/).closest('div.group')
       expect(firstSession?.className).toContain('border-transparent')
     })
   })

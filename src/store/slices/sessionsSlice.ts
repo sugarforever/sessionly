@@ -1,5 +1,6 @@
-import { createSlice, createAsyncThunk, type PayloadAction } from '@reduxjs/toolkit'
+import { createSlice, createAsyncThunk, createSelector, type PayloadAction } from '@reduxjs/toolkit'
 import type { Session, ProjectGroup } from '@/../electron/shared/types'
+import type { RootState } from '@/store'
 
 interface SessionsState {
   projectGroups: ProjectGroup[]
@@ -9,7 +10,30 @@ interface SessionsState {
   isLoading: boolean
   isLoadingSession: boolean
   error: string | null
+  // Hidden state
+  hiddenProjects: string[]
+  hiddenSessions: string[]
+  showHidden: boolean
 }
+
+// Load hidden state from localStorage
+const loadHiddenState = (): {
+  hiddenProjects: string[]
+  hiddenSessions: string[]
+  showHidden: boolean
+} => {
+  try {
+    return {
+      hiddenProjects: JSON.parse(localStorage.getItem('hiddenProjects') || '[]'),
+      hiddenSessions: JSON.parse(localStorage.getItem('hiddenSessions') || '[]'),
+      showHidden: localStorage.getItem('showHidden') === 'true',
+    }
+  } catch {
+    return { hiddenProjects: [], hiddenSessions: [], showHidden: false }
+  }
+}
+
+const hiddenState = loadHiddenState()
 
 const initialState: SessionsState = {
   projectGroups: [],
@@ -19,6 +43,9 @@ const initialState: SessionsState = {
   isLoading: false,
   isLoadingSession: false,
   error: null,
+  hiddenProjects: hiddenState.hiddenProjects,
+  hiddenSessions: hiddenState.hiddenSessions,
+  showHidden: hiddenState.showHidden,
 }
 
 // Async thunk to fetch all sessions
@@ -84,6 +111,31 @@ const sessionsSlice = createSlice({
     clearError: (state) => {
       state.error = null
     },
+    // Hidden state actions
+    hideProject: (state, action: PayloadAction<string>) => {
+      if (!state.hiddenProjects.includes(action.payload)) {
+        state.hiddenProjects.push(action.payload)
+        localStorage.setItem('hiddenProjects', JSON.stringify(state.hiddenProjects))
+      }
+    },
+    unhideProject: (state, action: PayloadAction<string>) => {
+      state.hiddenProjects = state.hiddenProjects.filter((id) => id !== action.payload)
+      localStorage.setItem('hiddenProjects', JSON.stringify(state.hiddenProjects))
+    },
+    hideSession: (state, action: PayloadAction<string>) => {
+      if (!state.hiddenSessions.includes(action.payload)) {
+        state.hiddenSessions.push(action.payload)
+        localStorage.setItem('hiddenSessions', JSON.stringify(state.hiddenSessions))
+      }
+    },
+    unhideSession: (state, action: PayloadAction<string>) => {
+      state.hiddenSessions = state.hiddenSessions.filter((id) => id !== action.payload)
+      localStorage.setItem('hiddenSessions', JSON.stringify(state.hiddenSessions))
+    },
+    toggleShowHidden: (state) => {
+      state.showHidden = !state.showHidden
+      localStorage.setItem('showHidden', String(state.showHidden))
+    },
   },
   extraReducers: (builder) => {
     builder
@@ -125,5 +177,43 @@ const sessionsSlice = createSlice({
   },
 })
 
-export const { selectSession, clearCurrentSession, clearError } = sessionsSlice.actions
+export const {
+  selectSession,
+  clearCurrentSession,
+  clearError,
+  hideProject,
+  unhideProject,
+  hideSession,
+  unhideSession,
+  toggleShowHidden,
+} = sessionsSlice.actions
 export default sessionsSlice.reducer
+
+// Selectors - memoized with createSelector
+const selectProjectGroups = (state: RootState) => state.sessions.projectGroups
+const selectHiddenProjects = (state: RootState) => state.sessions.hiddenProjects
+const selectHiddenSessions = (state: RootState) => state.sessions.hiddenSessions
+const selectShowHidden = (state: RootState) => state.sessions.showHidden
+
+export const selectVisibleProjectGroups = createSelector(
+  [selectProjectGroups, selectHiddenProjects, selectHiddenSessions, selectShowHidden],
+  (projectGroups, hiddenProjects, hiddenSessions, showHidden): ProjectGroup[] => {
+    if (showHidden) return projectGroups
+
+    return projectGroups
+      .filter((group) => !hiddenProjects.includes(group.projectEncoded))
+      .map((group) => ({
+        ...group,
+        sessions: group.sessions.filter((s) => !hiddenSessions.includes(s.id)),
+      }))
+      .filter((group) => group.sessions.length > 0)
+  }
+)
+
+export const selectHiddenCount = createSelector(
+  [selectHiddenProjects, selectHiddenSessions],
+  (hiddenProjects, hiddenSessions): { projects: number; sessions: number } => ({
+    projects: hiddenProjects.length,
+    sessions: hiddenSessions.length,
+  })
+)

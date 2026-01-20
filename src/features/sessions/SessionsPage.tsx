@@ -12,6 +12,16 @@ export function SessionsPage() {
     error,
     selectSession,
     refresh,
+    // Hidden state
+    showHidden,
+    hiddenCount,
+    hiddenProjects,
+    hiddenSessions,
+    hideProject,
+    unhideProject,
+    hideSession,
+    unhideSession,
+    toggleShowHidden,
   } = useSessions()
 
   return (
@@ -24,6 +34,15 @@ export function SessionsPage() {
           isLoading={isLoading}
           onSelectSession={selectSession}
           onRefresh={refresh}
+          showHidden={showHidden}
+          hiddenCount={hiddenCount}
+          onToggleShowHidden={toggleShowHidden}
+          onHideProject={hideProject}
+          onUnhideProject={unhideProject}
+          onHideSession={hideSession}
+          onUnhideSession={unhideSession}
+          hiddenProjects={hiddenProjects}
+          hiddenSessions={hiddenSessions}
         />
       </div>
 

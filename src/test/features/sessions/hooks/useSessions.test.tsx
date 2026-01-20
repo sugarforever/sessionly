@@ -52,6 +52,9 @@ function createTestStore(preloadedState = {}) {
         isLoading: false,
         isLoadingSession: false,
         error: null,
+        hiddenProjects: [],
+        hiddenSessions: [],
+        showHidden: false,
         ...preloadedState,
       },
     },
@@ -315,12 +318,22 @@ describe('useSessions', () => {
       const firstSelectSession = result.current.selectSession
       const firstClearSelection = result.current.clearSelection
       const firstRefresh = result.current.refresh
+      const firstHideProject = result.current.hideProject
+      const firstUnhideProject = result.current.unhideProject
+      const firstHideSession = result.current.hideSession
+      const firstUnhideSession = result.current.unhideSession
+      const firstToggleShowHidden = result.current.toggleShowHidden
 
       rerender()
 
       expect(result.current.selectSession).toBe(firstSelectSession)
       expect(result.current.clearSelection).toBe(firstClearSelection)
       expect(result.current.refresh).toBe(firstRefresh)
+      expect(result.current.hideProject).toBe(firstHideProject)
+      expect(result.current.unhideProject).toBe(firstUnhideProject)
+      expect(result.current.hideSession).toBe(firstHideSession)
+      expect(result.current.unhideSession).toBe(firstUnhideSession)
+      expect(result.current.toggleShowHidden).toBe(firstToggleShowHidden)
     })
   })
 })
