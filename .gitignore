@@ -45,3 +45,5 @@ coverage
 Thumbs.db
 
 DESIGN_DOC.md
+
+.vscode
