@@ -95,9 +95,7 @@ export function UpdateNotification() {
           {status === 'downloading' && (
             <>
               <h4 className="font-semibold">Downloading Update</h4>
-              <p className="mt-1 text-sm text-muted-foreground">
-                Version {updateInfo?.version}
-              </p>
+              <p className="mt-1 text-sm text-muted-foreground">Version {updateInfo?.version}</p>
               {progress && (
                 <div className="mt-3">
                   <Progress value={progress.percent} className="h-2" />
@@ -127,10 +125,7 @@ export function UpdateNotification() {
         </div>
 
         {status !== 'downloading' && (
-          <button
-            onClick={handleDismiss}
-            className="ml-2 rounded-sm opacity-70 hover:opacity-100"
-          >
+          <button onClick={handleDismiss} className="ml-2 rounded-sm opacity-70 hover:opacity-100">
             <X className="h-4 w-4" />
           </button>
         )}
