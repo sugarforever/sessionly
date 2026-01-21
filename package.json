@@ -3,7 +3,10 @@
   "version": "1.0.1",
   "description": "Desktop application for browsing and managing Claude Code CLI session history",
   "main": "dist-electron/main/index.js",
-  "author": "Sessionly",
+  "author": {
+    "name": "VerySmallWoods",
+    "email": "0001coder@gmail.com"
+  },
   "license": "MIT",
   "private": true,
   "scripts": {
@@ -112,15 +115,13 @@
         {
           "target": "nsis",
           "arch": [
-            "x64",
-            "ia32"
+            "x64"
           ]
         },
         {
           "target": "zip",
           "arch": [
-            "x64",
-            "ia32"
+            "x64"
           ]
         }
       ]
