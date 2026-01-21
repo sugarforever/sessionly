@@ -231,7 +231,7 @@ jobs:
           generate_release_notes: true
           files: |
             artifacts/**/*.dmg
-            artifacts/**/*.exe
+            artifacts/**/Sessionly Setup*.exe
             artifacts/**/*.AppImage
             artifacts/**/*.deb
             artifacts/**/*.rpm
