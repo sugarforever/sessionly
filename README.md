@@ -42,13 +42,13 @@ Sessionly reads your Claude Code session files from `~/.claude/projects/` and pr
 
 ### From Release (Recommended)
 
-Download the latest release for your platform from the [Releases](https://github.com/anthropics/sessionly/releases) page.
+Download the latest release for your platform from the [Releases](https://github.com/sugarforever/sessionly/releases) page.
 
 ### From Source
 
 ```bash
 # Clone the repository
-git clone https://github.com/anthropics/sessionly.git
+git clone https://github.com/sugarforever/sessionly.git
 cd sessionly
 
 # Install dependencies
