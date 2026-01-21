@@ -31,10 +31,7 @@ export function MessageList({ messages, subagents, scrollToBottom = false }: Mes
   }
 
   return (
-    <div
-      ref={containerRef}
-      className="h-full overflow-y-auto bg-background scrollbar-thin"
-    >
+    <div ref={containerRef} className="h-full overflow-y-auto bg-background scrollbar-thin">
       <div className="space-y-4 max-w-4xl mx-auto px-6 py-6">
         {messages.map((message, index) => (
           <MessageBubble

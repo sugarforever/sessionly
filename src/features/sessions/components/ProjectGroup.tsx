@@ -59,8 +59,13 @@ export function ProjectGroup({
           ) : (
             <ChevronRight className="h-3.5 w-3.5 text-muted-foreground/60 shrink-0" />
           )}
-          <Folder className={`h-3.5 w-3.5 shrink-0 ${isHidden ? 'text-amber-400/70' : 'text-muted-foreground/60'}`} />
-          <span className="text-xs font-medium text-muted-foreground truncate" title={group.project}>
+          <Folder
+            className={`h-3.5 w-3.5 shrink-0 ${isHidden ? 'text-amber-400/70' : 'text-muted-foreground/60'}`}
+          />
+          <span
+            className="text-xs font-medium text-muted-foreground truncate"
+            title={group.project}
+          >
             {shortName}
           </span>
         </button>

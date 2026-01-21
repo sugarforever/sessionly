@@ -40,7 +40,8 @@ describe('ThinkingBlock', () => {
 
     it('should show preview text when collapsed', () => {
       // Text needs to be over 100 characters for preview to show
-      const longText = 'This is a longer thinking block that should show a preview. It needs to be over 100 characters to show the truncated preview text.'
+      const longText =
+        'This is a longer thinking block that should show a preview. It needs to be over 100 characters to show the truncated preview text.'
       const block = createMockThinkingBlock({
         thinking: longText,
       })

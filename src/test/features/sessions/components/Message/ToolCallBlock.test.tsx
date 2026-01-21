@@ -112,7 +112,9 @@ describe('ToolCallBlock', () => {
         name: 'Read',
         input: { file_path: '/test.txt' },
       })
-      const { container } = renderWithProviders(<ToolCallBlock toolUse={toolUse} defaultExpanded={true} />)
+      const { container } = renderWithProviders(
+        <ToolCallBlock toolUse={toolUse} defaultExpanded={true} />
+      )
 
       // Preview should not be visible in the header button when expanded
       // The header button is the first one
@@ -187,7 +189,9 @@ describe('ToolCallBlock', () => {
 
     it('should collapse when clicking expanded block', () => {
       const toolUse = createMockToolUseBlock()
-      const { container } = renderWithProviders(<ToolCallBlock toolUse={toolUse} defaultExpanded={true} />)
+      const { container } = renderWithProviders(
+        <ToolCallBlock toolUse={toolUse} defaultExpanded={true} />
+      )
 
       expect(screen.getByText('Input')).toBeInTheDocument()
 
@@ -243,7 +247,9 @@ describe('ToolCallBlock', () => {
         is_error: true,
       }
 
-      const { container } = renderWithProviders(<ToolCallBlock toolUse={toolUse} toolResult={toolResult} />)
+      const { container } = renderWithProviders(
+        <ToolCallBlock toolUse={toolUse} toolResult={toolResult} />
+      )
 
       // Should show error text styling (red text)
       const errorText = container.querySelector('[class*="text-red"]')

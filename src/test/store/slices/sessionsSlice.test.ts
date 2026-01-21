@@ -118,7 +118,9 @@ describe('sessionsSlice', () => {
 
   describe('selectSession', () => {
     it('should set selected session ID and project', () => {
-      store.dispatch(selectSession({ sessionId: 'session-1', projectEncoded: '-Users-test-project1' }))
+      store.dispatch(
+        selectSession({ sessionId: 'session-1', projectEncoded: '-Users-test-project1' })
+      )
 
       const state = store.getState().sessions
       expect(state.selectedSessionId).toBe('session-1')
@@ -127,7 +129,9 @@ describe('sessionsSlice', () => {
 
     it('should clear selection when null is passed', () => {
       // First select a session
-      store.dispatch(selectSession({ sessionId: 'session-1', projectEncoded: '-Users-test-project1' }))
+      store.dispatch(
+        selectSession({ sessionId: 'session-1', projectEncoded: '-Users-test-project1' })
+      )
 
       // Then clear it
       store.dispatch(selectSession(null))
@@ -279,11 +283,15 @@ describe('sessionsSlice', () => {
   describe('integration scenarios', () => {
     it('should handle selecting different sessions', () => {
       // Select first session
-      store.dispatch(selectSession({ sessionId: 'session-1', projectEncoded: '-Users-test-project1' }))
+      store.dispatch(
+        selectSession({ sessionId: 'session-1', projectEncoded: '-Users-test-project1' })
+      )
       expect(store.getState().sessions.selectedSessionId).toBe('session-1')
 
       // Select different session
-      store.dispatch(selectSession({ sessionId: 'session-2', projectEncoded: '-Users-test-project1' }))
+      store.dispatch(
+        selectSession({ sessionId: 'session-2', projectEncoded: '-Users-test-project1' })
+      )
       expect(store.getState().sessions.selectedSessionId).toBe('session-2')
     })
 
@@ -325,7 +333,9 @@ describe('sessionsSlice', () => {
       vi.spyOn(Storage.prototype, 'setItem').mockImplementation((key, value) => {
         localStorageMock[key] = value
       })
-      vi.spyOn(Storage.prototype, 'getItem').mockImplementation((key) => localStorageMock[key] || null)
+      vi.spyOn(Storage.prototype, 'getItem').mockImplementation(
+        (key) => localStorageMock[key] || null
+      )
     })
 
     afterEach(() => {

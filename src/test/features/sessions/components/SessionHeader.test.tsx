@@ -123,9 +123,36 @@ describe('SessionHeader', () => {
     it('should display message count', () => {
       const session = createMockSession({
         messages: [
-          { uuid: '1', parentUuid: null, timestamp: '', role: 'user', textContent: 'msg1', thinkingBlocks: [], toolUseBlocks: [], toolResults: {} },
-          { uuid: '2', parentUuid: '1', timestamp: '', role: 'assistant', textContent: 'msg2', thinkingBlocks: [], toolUseBlocks: [], toolResults: {} },
-          { uuid: '3', parentUuid: '2', timestamp: '', role: 'user', textContent: 'msg3', thinkingBlocks: [], toolUseBlocks: [], toolResults: {} },
+          {
+            uuid: '1',
+            parentUuid: null,
+            timestamp: '',
+            role: 'user',
+            textContent: 'msg1',
+            thinkingBlocks: [],
+            toolUseBlocks: [],
+            toolResults: {},
+          },
+          {
+            uuid: '2',
+            parentUuid: '1',
+            timestamp: '',
+            role: 'assistant',
+            textContent: 'msg2',
+            thinkingBlocks: [],
+            toolUseBlocks: [],
+            toolResults: {},
+          },
+          {
+            uuid: '3',
+            parentUuid: '2',
+            timestamp: '',
+            role: 'user',
+            textContent: 'msg3',
+            thinkingBlocks: [],
+            toolUseBlocks: [],
+            toolResults: {},
+          },
         ],
       })
       renderWithProviders(<SessionHeader {...defaultProps} session={session} />)

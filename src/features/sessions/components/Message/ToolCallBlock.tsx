@@ -112,9 +112,10 @@ export function ToolCallBlock({
                 }`}
               >
                 {renderToolResultContent(toolResult.content)}
-                {typeof toolResult.content === 'string' && toolResult.content.length > MAX_CONTENT_LENGTH && (
-                  <span className="text-muted-foreground/50">... (truncated)</span>
-                )}
+                {typeof toolResult.content === 'string' &&
+                  toolResult.content.length > MAX_CONTENT_LENGTH && (
+                    <span className="text-muted-foreground/50">... (truncated)</span>
+                  )}
               </div>
             </div>
           )}

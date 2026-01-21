@@ -24,28 +24,19 @@ export function AboutPage() {
       <div className="max-w-md text-center px-6">
         {/* Logo */}
         <div className="mb-6 flex justify-center">
-          <img
-            src="/icon.png"
-            alt="Sessionly Logo"
-            className="h-16 w-16 rounded-2xl"
-          />
+          <img src="/icon.png" alt="Sessionly Logo" className="h-16 w-16 rounded-2xl" />
         </div>
 
         {/* Title */}
-        <h1 className="text-2xl font-semibold tracking-tight text-foreground">
-          Sessionly
-        </h1>
+        <h1 className="text-2xl font-semibold tracking-tight text-foreground">Sessionly</h1>
 
         {/* Version */}
-        <p className="mt-1 font-mono text-sm text-muted-foreground">
-          v{version || '1.0.0'}
-        </p>
+        <p className="mt-1 font-mono text-sm text-muted-foreground">v{version || '1.0.0'}</p>
 
         {/* Description */}
         <p className="mt-4 text-sm text-muted-foreground leading-relaxed">
-          Browse and manage your Claude Code CLI session history.
-          View past conversations, search across sessions, and resume
-          where you left off.
+          Browse and manage your Claude Code CLI session history. View past conversations, search
+          across sessions, and resume where you left off.
         </p>
 
         {/* Links */}

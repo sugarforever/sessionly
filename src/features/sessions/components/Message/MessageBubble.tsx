@@ -86,9 +86,13 @@ export function MessageBubble({ message, subagents, showTimestamp = true }: Mess
       <div className={`flex-1 min-w-0 space-y-2 ${isUser ? 'items-end' : ''}`}>
         {/* Header */}
         <div className={`flex items-center gap-2 ${isUser ? 'flex-row-reverse' : ''}`}>
-          <span className="text-xs font-medium text-muted-foreground">{isUser ? 'You' : 'Claude'}</span>
+          <span className="text-xs font-medium text-muted-foreground">
+            {isUser ? 'You' : 'Claude'}
+          </span>
           {showTimestamp && formattedTime && (
-            <span className="text-[10px] text-muted-foreground/50 tabular-nums">{formattedTime}</span>
+            <span className="text-[10px] text-muted-foreground/50 tabular-nums">
+              {formattedTime}
+            </span>
           )}
           {message.model && !isUser && (
             <span className="text-[10px] text-muted-foreground/50 font-mono">{message.model}</span>

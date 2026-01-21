@@ -60,7 +60,9 @@ export function SessionSidebar({
               size="icon"
               onClick={onToggleShowHidden}
               className={`h-8 w-8 shrink-0 hover:bg-accent ${
-                showHidden ? 'text-amber-500 hover:text-amber-400' : 'text-muted-foreground hover:text-foreground'
+                showHidden
+                  ? 'text-amber-500 hover:text-amber-400'
+                  : 'text-muted-foreground hover:text-foreground'
               }`}
               title={showHidden ? 'Hide hidden items' : 'Show hidden items'}
             >

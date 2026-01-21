@@ -61,11 +61,7 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
             collapsed && 'mx-auto'
           )}
         >
-          {collapsed ? (
-            <PanelLeft className="h-4 w-4" />
-          ) : (
-            <PanelLeftClose className="h-4 w-4" />
-          )}
+          {collapsed ? <PanelLeft className="h-4 w-4" /> : <PanelLeftClose className="h-4 w-4" />}
         </Button>
       </div>
 
@@ -91,13 +87,14 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
                       disabled={item.disabled}
                     >
                       <item.icon className={cn('h-4 w-4 shrink-0', !collapsed && 'mr-3')} />
-                      {!collapsed && (
-                        <span className="truncate text-sm">{item.label}</span>
-                      )}
+                      {!collapsed && <span className="truncate text-sm">{item.label}</span>}
                     </Button>
                   </TooltipTrigger>
                   {collapsed && (
-                    <TooltipContent side="right" className="bg-popover text-popover-foreground border-border">
+                    <TooltipContent
+                      side="right"
+                      className="bg-popover text-popover-foreground border-border"
+                    >
                       <p>{item.label}</p>
                     </TooltipContent>
                   )}
@@ -111,7 +108,12 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
       {/* Footer - Theme toggle & Version */}
       <div className="border-t border-border p-2">
         <TooltipProvider delayDuration={0}>
-          <div className={cn('flex items-center', collapsed ? 'justify-center' : 'justify-between px-1')}>
+          <div
+            className={cn(
+              'flex items-center',
+              collapsed ? 'justify-center' : 'justify-between px-1'
+            )}
+          >
             <Tooltip>
               <TooltipTrigger asChild>
                 <Button
@@ -123,7 +125,10 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
                   <ThemeIcon className="h-4 w-4" />
                 </Button>
               </TooltipTrigger>
-              <TooltipContent side={collapsed ? 'right' : 'top'} className="bg-popover text-popover-foreground border-border">
+              <TooltipContent
+                side={collapsed ? 'right' : 'top'}
+                className="bg-popover text-popover-foreground border-border"
+              >
                 <p>Theme: {themeLabel}</p>
               </TooltipContent>
             </Tooltip>

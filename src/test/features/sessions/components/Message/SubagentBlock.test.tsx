@@ -53,7 +53,9 @@ describe('SubagentBlock', () => {
       expect(chevronDown).toBeInTheDocument()
 
       // Should show all messages when expanded
-      expect(screen.getByText('I found the following files matching your pattern.')).toBeInTheDocument()
+      expect(
+        screen.getByText('I found the following files matching your pattern.')
+      ).toBeInTheDocument()
     })
 
     it('should show message count in header', () => {
@@ -78,20 +80,26 @@ describe('SubagentBlock', () => {
       renderWithProviders(<SubagentBlock subagent={subagent} />)
 
       // Initially collapsed - message content should not be visible
-      expect(screen.queryByText('I found the following files matching your pattern.')).not.toBeInTheDocument()
+      expect(
+        screen.queryByText('I found the following files matching your pattern.')
+      ).not.toBeInTheDocument()
 
       // Click to expand
       const header = screen.getByRole('button')
       fireEvent.click(header)
 
       // Should now show expanded content
-      expect(screen.getByText('I found the following files matching your pattern.')).toBeInTheDocument()
+      expect(
+        screen.getByText('I found the following files matching your pattern.')
+      ).toBeInTheDocument()
 
       // Click to collapse
       fireEvent.click(header)
 
       // Should hide content again
-      expect(screen.queryByText('I found the following files matching your pattern.')).not.toBeInTheDocument()
+      expect(
+        screen.queryByText('I found the following files matching your pattern.')
+      ).not.toBeInTheDocument()
     })
 
     it('should hide preview text when expanded', () => {

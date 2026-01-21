@@ -1,11 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { screen, fireEvent } from '@testing-library/react'
 import { SessionSidebar } from '@/features/sessions/components/SessionSidebar'
-import {
-  renderWithProviders,
-  createMockProjectGroup,
-  createMockSessionSummary,
-} from '../testUtils'
+import { renderWithProviders, createMockProjectGroup, createMockSessionSummary } from '../testUtils'
 
 describe('SessionSidebar', () => {
   const defaultProps = {
@@ -103,9 +99,7 @@ describe('SessionSidebar', () => {
       renderWithProviders(<SessionSidebar {...defaultProps} projectGroups={[]} />)
 
       expect(screen.getByText('No sessions found')).toBeInTheDocument()
-      expect(
-        screen.getByText('Sessions appear after using Claude Code CLI')
-      ).toBeInTheDocument()
+      expect(screen.getByText('Sessions appear after using Claude Code CLI')).toBeInTheDocument()
     })
   })
 
@@ -134,12 +128,16 @@ describe('SessionSidebar', () => {
         createMockProjectGroup({
           project: '/Users/test/project2',
           projectEncoded: '-Users-test-project2',
-          sessions: [createMockSessionSummary({ id: 'session-2', firstMessage: 'Second project message' })],
+          sessions: [
+            createMockSessionSummary({ id: 'session-2', firstMessage: 'Second project message' }),
+          ],
         }),
         createMockProjectGroup({
           project: '/Users/test/project3',
           projectEncoded: '-Users-test-project3',
-          sessions: [createMockSessionSummary({ id: 'session-3', firstMessage: 'Third project message' })],
+          sessions: [
+            createMockSessionSummary({ id: 'session-3', firstMessage: 'Third project message' }),
+          ],
         }),
       ]
 

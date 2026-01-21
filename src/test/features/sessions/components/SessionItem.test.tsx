@@ -69,7 +69,7 @@ describe('SessionItem', () => {
   })
 
   describe('date formatting', () => {
-    it('should show time for today\'s sessions', () => {
+    it("should show time for today's sessions", () => {
       const now = new Date()
       const session = createMockSessionSummary({
         startTime: now.getTime() - 3600000, // 1 hour ago

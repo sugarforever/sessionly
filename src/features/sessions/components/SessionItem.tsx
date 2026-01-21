@@ -66,7 +66,9 @@ export function SessionItem({
     >
       <div className="flex items-start justify-between gap-2">
         <div className="flex-1 min-w-0">
-          <p className={`text-xs truncate ${isSelected ? 'text-foreground' : 'text-muted-foreground'}`}>
+          <p
+            className={`text-xs truncate ${isSelected ? 'text-foreground' : 'text-muted-foreground'}`}
+          >
             {preview}
           </p>
           <div className="mt-1.5 flex items-center gap-2 text-[10px] text-muted-foreground/60">
@@ -95,7 +97,9 @@ export function SessionItem({
             )}
           </button>
           {formattedDate && (
-            <span className="text-[10px] text-muted-foreground/50 tabular-nums">{formattedDate}</span>
+            <span className="text-[10px] text-muted-foreground/50 tabular-nums">
+              {formattedDate}
+            </span>
           )}
         </div>
       </div>

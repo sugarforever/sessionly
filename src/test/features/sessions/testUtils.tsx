@@ -5,7 +5,11 @@ import { configureStore } from '@reduxjs/toolkit'
 import sessionsReducer from '@/store/slices/sessionsSlice'
 import appReducer from '@/store/slices/appSlice'
 import type { ProjectGroup, Session, SessionSummary } from '@/../electron/shared/types'
-import type { ProcessedMessage, ThinkingBlock, ToolUseBlock } from '@/../electron/shared/session-types'
+import type {
+  ProcessedMessage,
+  ThinkingBlock,
+  ToolUseBlock,
+} from '@/../electron/shared/session-types'
 
 // Counter for generating unique IDs
 let mockSessionCounter = 0

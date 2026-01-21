@@ -26,10 +26,11 @@ export function Layout({ children }: LayoutProps) {
   return (
     <LayoutContext.Provider value={{ sidebarCollapsed, setSidebarCollapsed }}>
       <div className="flex h-screen overflow-hidden bg-background">
-        <Sidebar collapsed={sidebarCollapsed} onToggle={() => setSidebarCollapsed(!sidebarCollapsed)} />
-        <main className="flex-1 overflow-hidden bg-background">
-          {children}
-        </main>
+        <Sidebar
+          collapsed={sidebarCollapsed}
+          onToggle={() => setSidebarCollapsed(!sidebarCollapsed)}
+        />
+        <main className="flex-1 overflow-hidden bg-background">{children}</main>
       </div>
     </LayoutContext.Provider>
   )

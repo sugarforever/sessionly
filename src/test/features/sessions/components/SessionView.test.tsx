@@ -98,11 +98,7 @@ describe('SessionView', () => {
 
     it('should show message count in header', () => {
       const session = createMockSession({
-        messages: [
-          createMockMessage(),
-          createMockMessage(),
-          createMockMessage(),
-        ],
+        messages: [createMockMessage(), createMockMessage(), createMockMessage()],
       })
 
       renderWithProviders(<SessionView {...defaultProps} session={session} />)
@@ -168,9 +164,7 @@ describe('SessionView', () => {
   describe('layout', () => {
     it('should have full height layout', () => {
       const session = createMockSession()
-      const { container } = renderWithProviders(
-        <SessionView {...defaultProps} session={session} />
-      )
+      const { container } = renderWithProviders(<SessionView {...defaultProps} session={session} />)
 
       const mainContainer = container.firstChild
       expect(mainContainer).toHaveClass('h-full')
