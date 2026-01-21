@@ -28,6 +28,7 @@
   },
   "dependencies": {
     "@radix-ui/react-label": "^2.1.0",
+    "@radix-ui/react-progress": "^1.1.8",
     "@radix-ui/react-select": "^2.2.6",
     "@radix-ui/react-slot": "^1.2.3",
     "@radix-ui/react-tooltip": "^1.1.2",
@@ -35,7 +36,9 @@
     "class-variance-authority": "^0.7.0",
     "clsx": "^2.1.1",
     "date-fns": "^4.1.0",
+    "electron-log": "^5.4.3",
     "electron-store": "^10.0.0",
+    "electron-updater": "^6.7.3",
     "highlight.js": "^11.11.1",
     "lucide-react": "^0.441.0",
     "node-pty": "^1.1.0",
@@ -155,6 +158,11 @@
     "nsis": {
       "oneClick": false,
       "allowToChangeInstallationDirectory": true
+    },
+    "publish": {
+      "provider": "github",
+      "owner": "sugarforever",
+      "repo": "sessionly"
     }
   }
 }

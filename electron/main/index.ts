@@ -4,6 +4,7 @@ import { fileURLToPath } from 'node:url'
 import { WindowStateManager } from './window-state-manager'
 import { setupIPC } from './ipc-handlers'
 import { createSystemTray } from './system-tray'
+import { initAutoUpdater, setupAutoUpdaterIPC } from './auto-updater'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 
@@ -86,12 +87,18 @@ app.whenReady().then(() => {
 
   // Setup IPC handlers
   setupIPC()
+  setupAutoUpdaterIPC()
 
   // Create window
   createWindow()
 
   // Create system tray
   tray = createSystemTray(mainWindow)
+
+  // Initialize auto-updater (production only)
+  if (!VITE_DEV_SERVER_URL && mainWindow) {
+    initAutoUpdater(mainWindow)
+  }
 
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) {

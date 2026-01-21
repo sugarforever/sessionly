@@ -1,5 +1,6 @@
 import { type ReactNode, useState, createContext, useContext } from 'react'
 import { Sidebar } from './Sidebar'
+import { UpdateNotification } from './UpdateNotification'
 
 interface LayoutContextType {
   sidebarCollapsed: boolean
@@ -31,6 +32,7 @@ export function Layout({ children }: LayoutProps) {
           onToggle={() => setSidebarCollapsed(!sidebarCollapsed)}
         />
         <main className="flex-1 overflow-hidden bg-background">{children}</main>
+        <UpdateNotification />
       </div>
     </LayoutContext.Provider>
   )

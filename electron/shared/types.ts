@@ -32,6 +32,21 @@ export interface TerminalSpawnOptions {
 
 export type NativeTheme = 'dark' | 'light'
 
+// Auto-update types
+export interface UpdateInfo {
+  version: string
+  releaseDate: string
+  releaseName?: string
+  releaseNotes?: string | Array<{ version: string; note: string }>
+}
+
+export interface UpdateProgress {
+  percent: number
+  bytesPerSecond: number
+  transferred: number
+  total: number
+}
+
 export interface ElectronAPI {
   // App
   getVersion: () => Promise<IpcResponse<string>>
@@ -62,6 +77,17 @@ export interface ElectronAPI {
   // Event listeners
   onMainMessage: (callback: (message: string) => void) => () => void
   onNavigateTo: (callback: (path: string) => void) => () => void
+
+  // Auto-update
+  checkForUpdates: () => Promise<IpcResponse<UpdateInfo | null>>
+  downloadUpdate: () => Promise<IpcResponse<void>>
+  installUpdate: () => void
+  onUpdateChecking: (callback: () => void) => () => void
+  onUpdateAvailable: (callback: (info: UpdateInfo) => void) => () => void
+  onUpdateNotAvailable: (callback: () => void) => () => void
+  onUpdateProgress: (callback: (progress: UpdateProgress) => void) => () => void
+  onUpdateDownloaded: (callback: (info: UpdateInfo) => void) => () => void
+  onUpdateError: (callback: (error: string) => void) => () => void
 }
 
 export type IpcChannels =
@@ -81,6 +107,15 @@ export type IpcChannels =
   | 'terminal:exit'
   | 'main-process-message'
   | 'navigate-to'
+  | 'update:check'
+  | 'update:download'
+  | 'update:install'
+  | 'update:checking'
+  | 'update:available'
+  | 'update:not-available'
+  | 'update:progress'
+  | 'update:downloaded'
+  | 'update:error'
 
 declare global {
   interface Window {

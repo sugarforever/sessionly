@@ -65,4 +65,14 @@ global.window.electron = {
   // Event listeners
   onMainMessage: () => () => {},
   onNavigateTo: () => () => {},
+  // Auto-update mocks
+  checkForUpdates: async () => ({ success: true, data: null }),
+  downloadUpdate: async () => ({ success: true, data: undefined }),
+  installUpdate: () => {},
+  onUpdateChecking: () => () => {},
+  onUpdateAvailable: () => () => {},
+  onUpdateNotAvailable: () => () => {},
+  onUpdateProgress: () => () => {},
+  onUpdateDownloaded: () => () => {},
+  onUpdateError: () => () => {},
 }

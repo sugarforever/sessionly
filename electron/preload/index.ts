@@ -1,5 +1,5 @@
 import { contextBridge, ipcRenderer } from 'electron'
-import type { ElectronAPI } from '../shared/types'
+import type { ElectronAPI, UpdateInfo, UpdateProgress } from '../shared/types'
 
 // Expose protected methods that allow the renderer process to use
 // ipcRenderer without exposing the entire object
@@ -68,6 +68,55 @@ const electronAPI: ElectronAPI = {
     ipcRenderer.on('navigate-to', subscription)
     return () => {
       ipcRenderer.removeListener('navigate-to', subscription)
+    }
+  },
+
+  // Auto-update
+  checkForUpdates: () => ipcRenderer.invoke('update:check'),
+  downloadUpdate: () => ipcRenderer.invoke('update:download'),
+  installUpdate: () => ipcRenderer.invoke('update:install'),
+
+  onUpdateChecking: (callback) => {
+    const subscription = () => callback()
+    ipcRenderer.on('update:checking', subscription)
+    return () => {
+      ipcRenderer.removeListener('update:checking', subscription)
+    }
+  },
+  onUpdateAvailable: (callback) => {
+    const subscription = (_event: Electron.IpcRendererEvent, info: UpdateInfo) => callback(info)
+    ipcRenderer.on('update:available', subscription)
+    return () => {
+      ipcRenderer.removeListener('update:available', subscription)
+    }
+  },
+  onUpdateNotAvailable: (callback) => {
+    const subscription = () => callback()
+    ipcRenderer.on('update:not-available', subscription)
+    return () => {
+      ipcRenderer.removeListener('update:not-available', subscription)
+    }
+  },
+  onUpdateProgress: (callback) => {
+    const subscription = (_event: Electron.IpcRendererEvent, progress: UpdateProgress) =>
+      callback(progress)
+    ipcRenderer.on('update:progress', subscription)
+    return () => {
+      ipcRenderer.removeListener('update:progress', subscription)
+    }
+  },
+  onUpdateDownloaded: (callback) => {
+    const subscription = (_event: Electron.IpcRendererEvent, info: UpdateInfo) => callback(info)
+    ipcRenderer.on('update:downloaded', subscription)
+    return () => {
+      ipcRenderer.removeListener('update:downloaded', subscription)
+    }
+  },
+  onUpdateError: (callback) => {
+    const subscription = (_event: Electron.IpcRendererEvent, error: string) => callback(error)
+    ipcRenderer.on('update:error', subscription)
+    return () => {
+      ipcRenderer.removeListener('update:error', subscription)
     }
   },
 }
