@@ -6,6 +6,7 @@
  */
 
 import * as fs from 'node:fs'
+import * as fsp from 'node:fs/promises'
 import * as path from 'node:path'
 import * as os from 'node:os'
 import * as readline from 'node:readline'
@@ -421,18 +422,20 @@ export async function getSessionSummary(filePath: string): Promise<SessionSummar
 
 /**
  * List all projects in the Claude projects directory
+ * Uses async fs operations to avoid blocking the event loop
  */
-export function listProjects(): string[] {
+export async function listProjects(): Promise<string[]> {
   const projectsDir = getProjectsDir()
-  if (!fs.existsSync(projectsDir)) {
+
+  try {
+    await fsp.access(projectsDir)
+  } catch {
     return []
   }
 
   try {
-    return fs.readdirSync(projectsDir).filter((name) => {
-      const fullPath = path.join(projectsDir, name)
-      return fs.statSync(fullPath).isDirectory()
-    })
+    const entries = await fsp.readdir(projectsDir, { withFileTypes: true })
+    return entries.filter((entry) => entry.isDirectory()).map((entry) => entry.name)
   } catch (e) {
     console.error('Failed to list projects:', e)
     return []
@@ -442,16 +445,20 @@ export function listProjects(): string[] {
 /**
  * List all session files for a project
  * Excludes agent files (warmup/subagent sessions)
+ * Uses async fs operations to avoid blocking the event loop
  */
-export function listSessionFiles(projectEncoded: string): string[] {
+export async function listSessionFiles(projectEncoded: string): Promise<string[]> {
   const projectDir = path.join(getProjectsDir(), projectEncoded)
-  if (!fs.existsSync(projectDir)) {
+
+  try {
+    await fsp.access(projectDir)
+  } catch {
     return []
   }
 
   try {
-    return fs
-      .readdirSync(projectDir)
+    const files = await fsp.readdir(projectDir)
+    return files
       .filter((name) => name.endsWith('.jsonl') && !name.startsWith('agent-'))
       .map((name) => path.join(projectDir, name))
   } catch (e) {
@@ -462,35 +469,40 @@ export function listSessionFiles(projectEncoded: string): string[] {
 
 /**
  * Get all sessions grouped by project
+ * Uses parallel I/O for faster startup
  */
 export async function getAllSessions(): Promise<ProjectGroup[]> {
-  const projects = listProjects()
-  const groups: ProjectGroup[] = []
+  const projects = await listProjects()
 
-  for (const projectEncoded of projects) {
-    const sessionFiles = listSessionFiles(projectEncoded)
-    const sessions: SessionSummary[] = []
+  // Process all projects in parallel
+  const groupResults = await Promise.all(
+    projects.map(async (projectEncoded): Promise<ProjectGroup | null> => {
+      const sessionFiles = await listSessionFiles(projectEncoded)
 
-    for (const filePath of sessionFiles) {
-      const summary = await getSessionSummary(filePath)
-      if (summary) {
-        sessions.push(summary)
+      // Process all session files within a project in parallel
+      const summaryResults = await Promise.all(sessionFiles.map((filePath) => getSessionSummary(filePath)))
+
+      // Filter out null results
+      const sessions = summaryResults.filter((s): s is SessionSummary => s !== null)
+
+      if (sessions.length === 0) {
+        return null
       }
-    }
 
-    // Sort sessions by start time (newest first)
-    sessions.sort((a, b) => (b.startTime || 0) - (a.startTime || 0))
+      // Sort sessions by start time (newest first)
+      sessions.sort((a, b) => (b.startTime || 0) - (a.startTime || 0))
 
-    if (sessions.length > 0) {
-      groups.push({
+      return {
         project: decodeProjectPath(projectEncoded),
         projectEncoded,
         sessions,
-      })
-    }
-  }
+      }
+    })
+  )
 
-  // Sort groups by most recent session
+  // Filter out null groups and sort by most recent session
+  const groups = groupResults.filter((g): g is ProjectGroup => g !== null)
+
   groups.sort((a, b) => {
     const aTime = a.sessions[0]?.startTime || 0
     const bTime = b.sessions[0]?.startTime || 0
