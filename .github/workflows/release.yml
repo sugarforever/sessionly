@@ -108,12 +108,17 @@ jobs:
         run: npm ci
 
       - name: Import Code Signing Certificate
-        if: ${{ secrets.MAC_CERTIFICATE_P12_BASE64 != '' }}
         env:
           CERTIFICATE_P12_BASE64: ${{ secrets.MAC_CERTIFICATE_P12_BASE64 }}
           CERTIFICATE_PASSWORD: ${{ secrets.MAC_CERTIFICATE_PASSWORD }}
           KEYCHAIN_PASSWORD: ${{ github.run_id }}
         run: |
+          # Skip if certificate is not provided
+          if [ -z "$CERTIFICATE_P12_BASE64" ]; then
+            echo "No certificate provided, skipping code signing setup"
+            exit 0
+          fi
+
           # Create a temporary keychain
           KEYCHAIN_PATH=$RUNNER_TEMP/app-signing.keychain-db
           security create-keychain -p "$KEYCHAIN_PASSWORD" $KEYCHAIN_PATH
