@@ -91,7 +91,8 @@
     },
     "files": [
       "dist",
-      "dist-electron"
+      "dist-electron",
+      "!sessionly-web"
     ],
     "mac": {
       "target": [

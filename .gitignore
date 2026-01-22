@@ -47,3 +47,6 @@ Thumbs.db
 DESIGN_DOC.md
 
 .vscode
+
+# Local symlinks
+sessionly-web
