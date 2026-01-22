@@ -1,5 +1,5 @@
 import { autoUpdater, UpdateInfo } from 'electron-updater'
-import { BrowserWindow, ipcMain } from 'electron'
+import { app, BrowserWindow, ipcMain } from 'electron'
 import log from 'electron-log'
 
 // Configure logging
@@ -107,6 +107,9 @@ export function setupAutoUpdaterIPC() {
   })
 
   ipcMain.handle('update:install', () => {
+    // Set isQuitting flag so the window close handler allows the app to quit
+    // instead of just hiding to tray
+    ;(app as { isQuitting?: boolean }).isQuitting = true
     autoUpdater.quitAndInstall(false, true)
   })
 }
