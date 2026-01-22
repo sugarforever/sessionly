@@ -1,4 +1,5 @@
 {
+  "ignorePatterns": ["promo-video/**"],
   "env": {
     "browser": true,
     "es2021": true,
