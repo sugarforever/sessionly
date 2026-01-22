@@ -1,8 +1,27 @@
 import { useEffect, useRef, useState } from 'react'
-import hljs from 'highlight.js'
-import 'highlight.js/styles/github-dark.css'
 import { Button } from '@/components/ui/button'
 import { Check, Copy } from 'lucide-react'
+
+// Lazy-load highlight.js to reduce initial bundle size (~1MB savings)
+let hljs: typeof import('highlight.js').default | null = null
+let hljsLoading: Promise<void> | null = null
+
+async function loadHighlightJs() {
+  if (hljs) return
+  if (hljsLoading) {
+    await hljsLoading
+    return
+  }
+  hljsLoading = (async () => {
+    const [hljsModule] = await Promise.all([
+      import('highlight.js'),
+      // @ts-expect-error CSS import has no type declarations
+      import('highlight.js/styles/github-dark.css'),
+    ])
+    hljs = hljsModule.default
+  })()
+  await hljsLoading
+}
 
 interface CodeBlockProps {
   code: string
@@ -15,10 +34,21 @@ export function CodeBlock({ code, language, filename }: CodeBlockProps) {
   const [copied, setCopied] = useState(false)
 
   useEffect(() => {
-    if (codeRef.current) {
+    let cancelled = false
+
+    async function highlight() {
+      await loadHighlightJs()
+      if (cancelled || !codeRef.current || !hljs) return
+
       // Remove any previous highlighting
       codeRef.current.removeAttribute('data-highlighted')
       hljs.highlightElement(codeRef.current)
+    }
+
+    highlight()
+
+    return () => {
+      cancelled = true
     }
   }, [code, language])
 

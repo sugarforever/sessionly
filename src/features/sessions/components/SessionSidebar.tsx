@@ -48,13 +48,14 @@ export function SessionSidebar({
           <h2 className="text-sm font-semibold text-foreground">Sessions</h2>
           <p className="text-xs text-muted-foreground truncate">
             {totalSessions} in {projectGroups.length} project{projectGroups.length !== 1 ? 's' : ''}
-            {totalHidden > 0 && !showHidden && (
+            {/* Use ternary for safer conditional rendering (rendering-conditional-render) */}
+            {totalHidden > 0 && !showHidden ? (
               <span className="ml-1 opacity-60">({totalHidden} hidden)</span>
-            )}
+            ) : null}
           </p>
         </div>
         <div className="flex items-center gap-1">
-          {totalHidden > 0 && (
+          {totalHidden > 0 ? (
             <Button
               variant="ghost"
               size="icon"
@@ -68,7 +69,7 @@ export function SessionSidebar({
             >
               {showHidden ? <Eye className="h-4 w-4" /> : <EyeOff className="h-4 w-4" />}
             </Button>
-          )}
+          ) : null}
           <Button
             variant="ghost"
             size="icon"

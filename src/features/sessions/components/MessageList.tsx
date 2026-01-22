@@ -34,18 +34,24 @@ export function MessageList({ messages, subagents, scrollToBottom = false }: Mes
     <div ref={containerRef} className="h-full overflow-y-auto bg-background scrollbar-thin">
       <div className="space-y-4 max-w-4xl mx-auto px-6 py-6">
         {messages.map((message, index) => (
-          <MessageBubble
+          // Use content-visibility for off-screen performance (rendering-content-visibility)
+          <div
             key={message.uuid}
-            message={message}
-            subagents={subagents}
-            showTimestamp={
-              // Show timestamp if first message or different from previous
-              index === 0 ||
-              new Date(message.timestamp).getTime() -
-                new Date(messages[index - 1].timestamp).getTime() >
-                60000
-            }
-          />
+            className="content-visibility-auto"
+            style={{ contentVisibility: 'auto', containIntrinsicSize: 'auto 100px' }}
+          >
+            <MessageBubble
+              message={message}
+              subagents={subagents}
+              showTimestamp={
+                // Show timestamp if first message or different from previous
+                index === 0 ||
+                new Date(message.timestamp).getTime() -
+                  new Date(messages[index - 1].timestamp).getTime() >
+                  60000
+              }
+            />
+          </div>
         ))}
       </div>
     </div>

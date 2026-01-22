@@ -6,6 +6,9 @@ import { ThinkingBlock } from './ThinkingBlock'
 import { ToolCallBlock } from './ToolCallBlock'
 import { CodeBlock } from './CodeBlock'
 
+// Hoisted to module scope to avoid recreation on each render (js-hoist-regexp)
+const CODE_BLOCK_REGEX = /```(\w*)\n([\s\S]*?)```/g
+
 interface MessageBubbleProps {
   message: ProcessedMessage
   subagents?: Record<string, SubagentSession>
@@ -27,13 +30,13 @@ export function MessageBubble({ message, subagents, showTimestamp = true }: Mess
   const renderedContent = useMemo(() => {
     if (!message.textContent) return null
 
-    // Split content by code blocks (```language\ncode```)
-    const codeBlockRegex = /```(\w*)\n([\s\S]*?)```/g
+    // Reset regex lastIndex since global regexes maintain state
+    CODE_BLOCK_REGEX.lastIndex = 0
     const parts: Array<{ type: 'text' | 'code'; content: string; language?: string }> = []
     let lastIndex = 0
     let match
 
-    while ((match = codeBlockRegex.exec(message.textContent)) !== null) {
+    while ((match = CODE_BLOCK_REGEX.exec(message.textContent)) !== null) {
       if (match.index > lastIndex) {
         parts.push({
           type: 'text',

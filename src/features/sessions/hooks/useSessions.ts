@@ -16,22 +16,29 @@ import {
 
 /**
  * Hook for managing session data
+ *
+ * State subscriptions are split to minimize re-renders:
+ * - Rendering state: values directly rendered in UI
+ * - Callback-only state: values only used in event handlers (via refs or selectors)
  */
 export function useSessions() {
   const dispatch = useAppDispatch()
-  const {
-    currentSession,
-    selectedSessionId,
-    selectedProjectEncoded,
-    isLoading,
-    isLoadingSession,
-    error,
-    hiddenProjects,
-    hiddenSessions,
-    showHidden,
-  } = useAppSelector((state) => state.sessions)
 
-  // Use selector for visible project groups (respects hidden state)
+  // Split selectors to minimize re-renders (rerender-defer-reads)
+  // Values that are rendered in the UI
+  const currentSession = useAppSelector((state) => state.sessions.currentSession)
+  const selectedSessionId = useAppSelector((state) => state.sessions.selectedSessionId)
+  const selectedProjectEncoded = useAppSelector((state) => state.sessions.selectedProjectEncoded)
+  const isLoading = useAppSelector((state) => state.sessions.isLoading)
+  const isLoadingSession = useAppSelector((state) => state.sessions.isLoadingSession)
+  const error = useAppSelector((state) => state.sessions.error)
+  const showHidden = useAppSelector((state) => state.sessions.showHidden)
+
+  // Values only passed to child components (not causing re-renders here)
+  const hiddenProjects = useAppSelector((state) => state.sessions.hiddenProjects)
+  const hiddenSessions = useAppSelector((state) => state.sessions.hiddenSessions)
+
+  // Use memoized selectors for derived state
   const visibleProjectGroups = useAppSelector(selectVisibleProjectGroups)
   const hiddenCount = useAppSelector(selectHiddenCount)
 
