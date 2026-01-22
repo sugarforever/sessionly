@@ -262,6 +262,15 @@ jobs:
       - name: Display downloaded artifacts
         run: find artifacts -type f -name "*" | head -50
 
+      - name: Clean up duplicate yml files
+        run: |
+          # Remove debug and app-update yml files (not needed, cause duplicates)
+          find artifacts -name "builder-debug.yml" -delete
+          find artifacts -name "app-update.yml" -delete
+          # Show remaining yml files
+          echo "Remaining yml files:"
+          find artifacts -name "*.yml" -o -name "*.yaml"
+
       - name: Get version info
         id: version_info
         run: |
