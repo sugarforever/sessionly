@@ -282,12 +282,52 @@ jobs:
             echo "version=${GITHUB_REF_NAME#v}" >> $GITHUB_OUTPUT
           fi
 
+      - name: Extract release notes from CHANGELOG
+        id: release_notes
+        run: |
+          VERSION="${{ steps.version_info.outputs.version }}"
+
+          # Extract content between version header and the next version header (or end markers)
+          # This handles both [x.y.z] and [Unreleased] formats
+          NOTES=$(awk -v ver="$VERSION" '
+            /^## \[/ {
+              if (found) exit
+              if ($0 ~ "\\[" ver "\\]" || (ver == "" && $0 ~ "\\[Unreleased\\]")) {
+                found=1
+                next
+              }
+            }
+            found && /^---$/ { exit }
+            found { print }
+          ' CHANGELOG.md)
+
+          # If no version-specific notes found, try [Unreleased]
+          if [ -z "$NOTES" ]; then
+            NOTES=$(awk '
+              /^## \[Unreleased\]/ { found=1; next }
+              found && /^## \[/ { exit }
+              found && /^---$/ { exit }
+              found { print }
+            ' CHANGELOG.md)
+          fi
+
+          # Fallback to auto-generated if no notes found
+          if [ -z "$NOTES" ]; then
+            echo "No release notes found in CHANGELOG.md, using auto-generated notes"
+            echo "use_auto_notes=true" >> $GITHUB_OUTPUT
+          else
+            # Write notes to a file (handles multi-line content)
+            echo "$NOTES" > release_notes.md
+            echo "use_auto_notes=false" >> $GITHUB_OUTPUT
+          fi
+
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ steps.version_info.outputs.tag_name }}
           name: Sessionly ${{ steps.version_info.outputs.tag_name }}
-          generate_release_notes: true
+          body_path: ${{ steps.release_notes.outputs.use_auto_notes == 'false' && 'release_notes.md' || '' }}
+          generate_release_notes: ${{ steps.release_notes.outputs.use_auto_notes == 'true' }}
           files: |
             artifacts/**/*.dmg
             artifacts/**/Sessionly Setup*.exe
