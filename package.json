@@ -115,7 +115,9 @@
       "hardenedRuntime": true,
       "gatekeeperAssess": false,
       "entitlements": "build/entitlements.mac.plist",
-      "entitlementsInherit": "build/entitlements.mac.plist"
+      "entitlementsInherit": "build/entitlements.mac.plist",
+      "signIgnore": [],
+      "type": "distribution"
     },
     "afterSign": "scripts/notarize.js",
     "win": {

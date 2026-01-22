@@ -131,6 +131,17 @@ jobs:
           security set-key-partition-list -S apple-tool:,apple: -k "$KEYCHAIN_PASSWORD" $KEYCHAIN_PATH
           security list-keychain -d user -s $KEYCHAIN_PATH
 
+          # List available signing identities for debugging
+          echo "Available signing identities:"
+          security find-identity -v -p codesigning $KEYCHAIN_PATH
+
+          # Verify we have a Developer ID Application certificate
+          if ! security find-identity -v -p codesigning $KEYCHAIN_PATH | grep -q "Developer ID Application"; then
+            echo "WARNING: No 'Developer ID Application' certificate found!"
+            echo "Notarization requires a Developer ID Application certificate, not a Mac App Store certificate."
+            echo "Please export the correct certificate from Keychain Access."
+          fi
+
           # Clean up
           rm $RUNNER_TEMP/certificate.p12
 
@@ -149,6 +160,9 @@ jobs:
           path: |
             release/**/*.dmg
             release/**/*.zip
+            release/**/*.yml
+            release/**/*.yaml
+            release/**/*.blockmap
           if-no-files-found: warn
 
   build-windows:
@@ -189,6 +203,9 @@ jobs:
           path: |
             release/**/*.exe
             release/**/*.zip
+            release/**/*.yml
+            release/**/*.yaml
+            release/**/*.blockmap
           if-no-files-found: warn
 
   build-linux:
@@ -223,6 +240,9 @@ jobs:
             release/**/*.deb
             release/**/*.rpm
             release/**/*.zip
+            release/**/*.yml
+            release/**/*.yaml
+            release/**/*.blockmap
           if-no-files-found: warn
 
   publish-release:
@@ -266,5 +286,8 @@ jobs:
             artifacts/**/*.deb
             artifacts/**/*.rpm
             artifacts/**/*.zip
+            artifacts/**/*.yml
+            artifacts/**/*.yaml
+            artifacts/**/*.blockmap
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
