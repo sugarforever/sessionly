@@ -112,12 +112,14 @@ describe('MessageBubble', () => {
       expect(screen.getByText('This is a plain text message')).toBeInTheDocument()
     })
 
-    it('should preserve whitespace in text', () => {
+    it('should render multiline text', () => {
       const message = createMockMessage({ textContent: 'Line 1\nLine 2\nLine 3' })
       renderWithProviders(<MessageBubble message={message} />)
 
-      const textElement = screen.getByText(/Line 1/)
-      expect(textElement).toHaveClass('whitespace-pre-wrap')
+      // ReactMarkdown renders lines - verify all content is present
+      expect(screen.getByText(/Line 1/)).toBeInTheDocument()
+      expect(screen.getByText(/Line 2/)).toBeInTheDocument()
+      expect(screen.getByText(/Line 3/)).toBeInTheDocument()
     })
 
     it('should not render empty text content', () => {
