@@ -6,6 +6,7 @@ import { useTheme } from '@/contexts/ThemeContext'
 import { Button } from '@/components/ui/button'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import { PanelLeftClose, PanelLeft, Sun, Moon, Monitor } from 'lucide-react'
+import iconPng from '/icon.png'
 
 interface SidebarProps {
   collapsed: boolean
@@ -48,7 +49,7 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
       <div className="flex h-14 items-center justify-between border-b border-border px-3">
         {!collapsed && (
           <div className="flex items-center gap-2">
-            <img src="/icon.png" alt="Sessionly" className="h-6 w-6 rounded" />
+            <img src={iconPng} alt="Sessionly" className="h-6 w-6 rounded" />
             <span className="text-sm font-semibold text-foreground truncate">Sessionly</span>
           </div>
         )}

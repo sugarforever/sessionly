@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { ExternalLink } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import iconPng from '/icon.png'
 
 export function AboutPage() {
   const [version, setVersion] = useState<string>('')
@@ -24,7 +25,7 @@ export function AboutPage() {
       <div className="max-w-md text-center px-6">
         {/* Logo */}
         <div className="mb-6 flex justify-center">
-          <img src="/icon.png" alt="Sessionly Logo" className="h-16 w-16 rounded-2xl" />
+          <img src={iconPng} alt="Sessionly Logo" className="h-16 w-16 rounded-2xl" />
         </div>
 
         {/* Title */}
@@ -54,7 +55,7 @@ export function AboutPage() {
             variant="outline"
             size="sm"
             className="h-8 px-3 text-xs"
-            onClick={() => handleOpenExternal('https://github.com/anthropics/claude-code')}
+            onClick={() => handleOpenExternal('https://github.com/sugarforever/sessionly')}
           >
             GitHub
             <ExternalLink className="ml-1.5 h-3 w-3" />

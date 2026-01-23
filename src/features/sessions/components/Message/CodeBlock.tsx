@@ -15,7 +15,6 @@ async function loadHighlightJs() {
   hljsLoading = (async () => {
     const [hljsModule] = await Promise.all([
       import('highlight.js'),
-      // @ts-expect-error CSS import has no type declarations
       import('highlight.js/styles/github-dark.css'),
     ])
     hljs = hljsModule.default
