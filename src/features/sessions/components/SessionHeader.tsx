@@ -1,6 +1,16 @@
 import { useMemo, useState } from 'react'
 import { format, formatDistanceToNow } from 'date-fns'
-import { GitBranch, Clock, Folder, MessageSquare, TerminalSquare, Copy, Check } from 'lucide-react'
+import {
+  GitBranch,
+  Clock,
+  Folder,
+  MessageSquare,
+  TerminalSquare,
+  Copy,
+  Check,
+  Download,
+  Loader2,
+} from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import type { Session } from '@/../electron/shared/types'
@@ -13,6 +23,7 @@ interface SessionHeaderProps {
 
 export function SessionHeader({ session, showTerminal, onToggleTerminal }: SessionHeaderProps) {
   const [copied, setCopied] = useState(false)
+  const [isExporting, setIsExporting] = useState(false)
 
   const resumeCommand = `claude --resume ${session.id}`
 
@@ -23,6 +34,24 @@ export function SessionHeader({ session, showTerminal, onToggleTerminal }: Sessi
       setTimeout(() => setCopied(false), 2000)
     } catch {
       console.error('Failed to copy command')
+    }
+  }
+
+  const handleExport = async () => {
+    if (isExporting) return
+    setIsExporting(true)
+    try {
+      const response = await window.electron.sessionsExportMarkdown(
+        session.id,
+        session.projectEncoded
+      )
+      if (!response.success && response.error !== 'Export cancelled') {
+        console.error('Failed to export session:', response.error)
+      }
+    } catch (error) {
+      console.error('Failed to export session:', error)
+    } finally {
+      setIsExporting(false)
     }
   }
 
@@ -127,6 +156,21 @@ export function SessionHeader({ session, showTerminal, onToggleTerminal }: Sessi
                 Copy Resume Command
               </>
             )}
+          </Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={handleExport}
+            disabled={isExporting}
+            className="h-7 px-2.5 text-xs text-muted-foreground hover:text-foreground hover:bg-accent"
+            title="Export session as Markdown"
+          >
+            {isExporting ? (
+              <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
+            ) : (
+              <Download className="mr-1.5 h-3.5 w-3.5" />
+            )}
+            Export
           </Button>
           <Button
             variant="ghost"

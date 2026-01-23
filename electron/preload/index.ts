@@ -29,6 +29,8 @@ const electronAPI: ElectronAPI = {
   sessionsGet: (sessionId, projectEncoded) =>
     ipcRenderer.invoke('sessions:get', { sessionId, projectEncoded }),
   sessionsRefresh: () => ipcRenderer.invoke('sessions:refresh'),
+  sessionsExportMarkdown: (sessionId, projectEncoded) =>
+    ipcRenderer.invoke('sessions:exportMarkdown', { sessionId, projectEncoded }),
 
   // Terminal - PTY management
   terminalSpawn: (options) => ipcRenderer.invoke('terminal:spawn', options),

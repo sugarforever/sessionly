@@ -65,6 +65,7 @@ export interface ElectronAPI {
   sessionsGetAll: () => Promise<IpcResponse<ProjectGroup[]>>
   sessionsGet: (sessionId: string, projectEncoded: string) => Promise<IpcResponse<Session>>
   sessionsRefresh: () => Promise<IpcResponse<void>>
+  sessionsExportMarkdown: (sessionId: string, projectEncoded: string) => Promise<IpcResponse<string>>
 
   // Terminal - PTY management
   terminalSpawn: (options?: TerminalSpawnOptions) => Promise<IpcResponse<string>>
@@ -99,6 +100,7 @@ export type IpcChannels =
   | 'sessions:getAll'
   | 'sessions:get'
   | 'sessions:refresh'
+  | 'sessions:exportMarkdown'
   | 'terminal:spawn'
   | 'terminal:write'
   | 'terminal:resize'

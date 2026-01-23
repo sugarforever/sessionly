@@ -55,6 +55,7 @@ global.window.electron = {
   sessionsGetAll: async () => ({ success: true, data: [] }),
   sessionsGet: async () => ({ success: false, error: 'Not found' }),
   sessionsRefresh: async () => ({ success: true, data: undefined }),
+  sessionsExportMarkdown: async () => ({ success: true, data: '/tmp/export.md' }),
   // Terminal mocks
   terminalSpawn: async () => ({ success: true, data: 'test-terminal-id' }),
   terminalWrite: () => {},

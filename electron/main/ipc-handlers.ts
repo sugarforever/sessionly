@@ -1,4 +1,5 @@
-import { ipcMain, Notification, shell, BrowserWindow, nativeTheme } from 'electron'
+import { ipcMain, Notification, shell, BrowserWindow, nativeTheme, dialog } from 'electron'
+import { writeFile } from 'fs/promises'
 import type { IpcResponse, ProjectGroup, Session, TerminalSpawnOptions } from '../shared/types'
 
 export function setupIPC() {
@@ -122,6 +123,59 @@ export function setupIPC() {
   ipcMain.handle('sessions:refresh', async (): Promise<IpcResponse<void>> => {
     return { success: true, data: undefined }
   })
+
+  // Export session as Markdown
+  ipcMain.handle(
+    'sessions:exportMarkdown',
+    async (
+      event,
+      params: { sessionId: string; projectEncoded: string }
+    ): Promise<IpcResponse<string>> => {
+      try {
+        const { getSession } = await import('./services/session-store')
+        const { sessionToMarkdown, generateExportFilename } = await import(
+          './services/markdown-export'
+        )
+
+        // Get the session
+        const session = await getSession(params.sessionId, params.projectEncoded)
+        if (!session) {
+          return { success: false, error: 'Session not found' }
+        }
+
+        // Generate markdown content
+        const markdown = sessionToMarkdown(session)
+
+        // Generate default filename
+        const defaultFilename = generateExportFilename(session)
+
+        // Show save dialog
+        const window = BrowserWindow.fromWebContents(event.sender)
+        const result = await dialog.showSaveDialog(window!, {
+          title: 'Export Session as Markdown',
+          defaultPath: defaultFilename,
+          filters: [
+            { name: 'Markdown', extensions: ['md'] },
+            { name: 'All Files', extensions: ['*'] },
+          ],
+        })
+
+        if (result.canceled || !result.filePath) {
+          return { success: false, error: 'Export cancelled' }
+        }
+
+        // Write the file
+        await writeFile(result.filePath, markdown, 'utf-8')
+
+        return { success: true, data: result.filePath }
+      } catch (error) {
+        return {
+          success: false,
+          error: error instanceof Error ? error.message : 'Failed to export session',
+        }
+      }
+    }
+  )
 
   // ============================================================================
   // Terminal - PTY Management
