@@ -50,10 +50,6 @@ interface CachedSummary {
 
 const sessionSummaryCache = new Map<string, CachedSummary>()
 
-// Performance tracking
-let cacheHits = 0
-let cacheMisses = 0
-
 /**
  * Get a cached session summary or parse the file if cache is stale/missing.
  * Returns null if the file doesn't exist or has no valid messages.
@@ -66,11 +62,9 @@ async function getCachedSessionSummary(filePath: string): Promise<SessionSummary
     // Check if we have a valid cached entry
     const cached = sessionSummaryCache.get(filePath)
     if (cached && cached.mtime === mtime) {
-      cacheHits++
       return cached.summary
     }
 
-    cacheMisses++
     // Parse the file and cache the result
     const summary = await getSessionSummary(filePath)
     if (summary) {
@@ -567,10 +561,6 @@ export async function listSessionFiles(projectEncoded: string): Promise<string[]
  * Uses controlled parallel I/O to prevent resource exhaustion
  */
 export async function getAllSessions(): Promise<ProjectGroup[]> {
-  const startTime = performance.now()
-  cacheHits = 0
-  cacheMisses = 0
-
   const projects = await listProjects()
 
   // Process projects with concurrency limit to prevent resource exhaustion
@@ -608,13 +598,6 @@ export async function getAllSessions(): Promise<ProjectGroup[]> {
     const bTime = b.sessions[0]?.startTime || 0
     return bTime - aTime
   })
-
-  const elapsed = performance.now() - startTime
-  const totalSessions = groups.reduce((sum, g) => sum + g.sessions.length, 0)
-  console.log(
-    `[SessionStore] Loaded ${totalSessions} sessions in ${elapsed.toFixed(0)}ms ` +
-      `(cache: ${cacheHits} hits, ${cacheMisses} misses)`
-  )
 
   return groups
 }
