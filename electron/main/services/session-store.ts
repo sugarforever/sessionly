@@ -37,6 +37,64 @@ async function pLimit<T>(
   await Promise.all(workers)
   return results
 }
+
+/**
+ * Session Summary Cache
+ * Caches parsed session summaries with file modification times to avoid re-parsing unchanged files.
+ * This significantly reduces startup time on subsequent app launches.
+ */
+interface CachedSummary {
+  summary: SessionSummary
+  mtime: number // File modification time in milliseconds
+}
+
+const sessionSummaryCache = new Map<string, CachedSummary>()
+
+// Performance tracking
+let cacheHits = 0
+let cacheMisses = 0
+
+/**
+ * Get a cached session summary or parse the file if cache is stale/missing.
+ * Returns null if the file doesn't exist or has no valid messages.
+ */
+async function getCachedSessionSummary(filePath: string): Promise<SessionSummary | null> {
+  try {
+    const stats = await fsp.stat(filePath)
+    const mtime = stats.mtimeMs
+
+    // Check if we have a valid cached entry
+    const cached = sessionSummaryCache.get(filePath)
+    if (cached && cached.mtime === mtime) {
+      cacheHits++
+      return cached.summary
+    }
+
+    cacheMisses++
+    // Parse the file and cache the result
+    const summary = await getSessionSummary(filePath)
+    if (summary) {
+      sessionSummaryCache.set(filePath, { summary, mtime })
+    } else {
+      // Remove stale cache entry if file no longer has valid data
+      sessionSummaryCache.delete(filePath)
+    }
+    return summary
+  } catch {
+    // File doesn't exist or can't be read
+    sessionSummaryCache.delete(filePath)
+    return null
+  }
+}
+
+/**
+ * Clear the session summary cache.
+ * Call this when the user explicitly requests a refresh.
+ */
+export function clearSessionCache(): void {
+  sessionSummaryCache.clear()
+}
+
 import type {
   RawJSONLEntry,
   RawUserMessage,
@@ -509,14 +567,18 @@ export async function listSessionFiles(projectEncoded: string): Promise<string[]
  * Uses controlled parallel I/O to prevent resource exhaustion
  */
 export async function getAllSessions(): Promise<ProjectGroup[]> {
+  const startTime = performance.now()
+  cacheHits = 0
+  cacheMisses = 0
+
   const projects = await listProjects()
 
   // Process projects with concurrency limit to prevent resource exhaustion
   const projectTasks = projects.map((projectEncoded) => async (): Promise<ProjectGroup | null> => {
     const sessionFiles = await listSessionFiles(projectEncoded)
 
-    // Process session files with concurrency limit
-    const summaryTasks = sessionFiles.map((filePath) => () => getSessionSummary(filePath))
+    // Process session files with concurrency limit (uses cache for unchanged files)
+    const summaryTasks = sessionFiles.map((filePath) => () => getCachedSessionSummary(filePath))
     const summaryResults = await pLimit(summaryTasks, MAX_CONCURRENT_OPERATIONS)
 
     // Filter out null results
@@ -546,6 +608,13 @@ export async function getAllSessions(): Promise<ProjectGroup[]> {
     const bTime = b.sessions[0]?.startTime || 0
     return bTime - aTime
   })
+
+  const elapsed = performance.now() - startTime
+  const totalSessions = groups.reduce((sum, g) => sum + g.sessions.length, 0)
+  console.log(
+    `[SessionStore] Loaded ${totalSessions} sessions in ${elapsed.toFixed(0)}ms ` +
+      `(cache: ${cacheHits} hits, ${cacheMisses} misses)`
+  )
 
   return groups
 }

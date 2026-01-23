@@ -117,6 +117,8 @@ export function setupIPC() {
   )
 
   // Refresh sessions (re-scan filesystem)
+  // Note: Cache is NOT cleared - mtime check automatically detects changed files
+  // Call clearSessionCache() only for force-refresh scenarios
   ipcMain.handle('sessions:refresh', async (): Promise<IpcResponse<void>> => {
     return { success: true, data: undefined }
   })

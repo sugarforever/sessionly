@@ -6,6 +6,11 @@ import { setupIPC } from './ipc-handlers'
 import { createSystemTray } from './system-tray'
 import { initAutoUpdater, setupAutoUpdaterIPC } from './auto-updater'
 
+// Enable remote debugging in development for DevTools profiling
+if (process.env.VITE_DEV_SERVER_URL) {
+  app.commandLine.appendSwitch('remote-debugging-port', '9222')
+}
+
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 
 process.env.APP_ROOT = path.join(__dirname, '../..')
