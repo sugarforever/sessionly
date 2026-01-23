@@ -117,7 +117,9 @@ app.on('window-all-closed', () => {
 
 app.on('before-quit', () => {
   ;(app as { isQuitting?: boolean }).isQuitting = true
-  windowStateManager?.saveState(mainWindow!)
+  if (mainWindow && !mainWindow.isDestroyed()) {
+    windowStateManager?.saveState(mainWindow)
+  }
 })
 
 // Cleanup

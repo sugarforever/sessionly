@@ -80,6 +80,9 @@ export class WindowStateManager {
         clearTimeout(this.saveTimeout)
       }
       this.saveTimeout = setTimeout(() => {
+        if (window.isDestroyed()) {
+          return
+        }
         if (!window.isMaximized() && !window.isMinimized() && !window.isFullScreen()) {
           this.saveState(window)
         }
