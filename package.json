@@ -1,6 +1,6 @@
 {
   "name": "sessionly",
-  "version": "1.0.14",
+  "version": "1.0.15",
   "description": "Desktop application for browsing and managing Claude Code CLI session history",
   "main": "dist-electron/main/index.js",
   "author": {
