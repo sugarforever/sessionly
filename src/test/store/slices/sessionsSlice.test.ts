@@ -330,6 +330,7 @@ describe('sessionsSlice', () => {
 
     beforeEach(() => {
       localStorageMock = {}
+      vi.useFakeTimers()
       vi.spyOn(Storage.prototype, 'setItem').mockImplementation((key, value) => {
         localStorageMock[key] = value
       })
@@ -339,6 +340,7 @@ describe('sessionsSlice', () => {
     })
 
     afterEach(() => {
+      vi.useRealTimers()
       vi.restoreAllMocks()
     })
 
@@ -352,6 +354,7 @@ describe('sessionsSlice', () => {
 
       it('should persist to localStorage', () => {
         store.dispatch(hideProject('-Users-test-project1'))
+        vi.advanceTimersByTime(500) // Wait for debounced persistence
 
         expect(localStorage.setItem).toHaveBeenCalledWith(
           'hiddenProjects',
@@ -380,6 +383,7 @@ describe('sessionsSlice', () => {
       it('should persist to localStorage', () => {
         store.dispatch(hideProject('-Users-test-project1'))
         store.dispatch(unhideProject('-Users-test-project1'))
+        vi.advanceTimersByTime(500) // Wait for debounced persistence
 
         expect(localStorage.setItem).toHaveBeenLastCalledWith('hiddenProjects', JSON.stringify([]))
       })
@@ -395,6 +399,7 @@ describe('sessionsSlice', () => {
 
       it('should persist to localStorage', () => {
         store.dispatch(hideSession('session-1'))
+        vi.advanceTimersByTime(500) // Wait for debounced persistence
 
         expect(localStorage.setItem).toHaveBeenCalledWith(
           'hiddenSessions',
@@ -423,6 +428,7 @@ describe('sessionsSlice', () => {
       it('should persist to localStorage', () => {
         store.dispatch(hideSession('session-1'))
         store.dispatch(unhideSession('session-1'))
+        vi.advanceTimersByTime(500) // Wait for debounced persistence
 
         expect(localStorage.setItem).toHaveBeenLastCalledWith('hiddenSessions', JSON.stringify([]))
       })
@@ -441,6 +447,7 @@ describe('sessionsSlice', () => {
 
       it('should persist to localStorage', () => {
         store.dispatch(toggleShowHidden())
+        vi.advanceTimersByTime(500) // Wait for debounced persistence
 
         expect(localStorage.setItem).toHaveBeenCalledWith('showHidden', 'true')
       })

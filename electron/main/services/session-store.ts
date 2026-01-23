@@ -10,6 +10,33 @@ import * as fsp from 'node:fs/promises'
 import * as path from 'node:path'
 import * as os from 'node:os'
 import * as readline from 'node:readline'
+
+/**
+ * Simple concurrency limiter to prevent unbounded parallel I/O
+ * Limits concurrent operations to avoid memory spikes and file descriptor exhaustion
+ */
+const MAX_CONCURRENT_OPERATIONS = 8
+
+async function pLimit<T>(
+  tasks: (() => Promise<T>)[],
+  concurrency: number = MAX_CONCURRENT_OPERATIONS
+): Promise<T[]> {
+  const results: T[] = new Array(tasks.length)
+  let currentIndex = 0
+
+  async function worker() {
+    while (currentIndex < tasks.length) {
+      const index = currentIndex++
+      results[index] = await tasks[index]()
+    }
+  }
+
+  const workers = Array(Math.min(concurrency, tasks.length))
+    .fill(null)
+    .map(() => worker())
+  await Promise.all(workers)
+  return results
+}
 import type {
   RawJSONLEntry,
   RawUserMessage,
@@ -219,63 +246,68 @@ async function parseSessionFileWithAgentLinks(
     crlfDelay: Infinity,
   })
 
-  for await (const line of rl) {
-    if (!line.trim()) continue
+  try {
+    for await (const line of rl) {
+      if (!line.trim()) continue
 
-    try {
-      const entry = JSON.parse(line) as RawJSONLEntry
+      try {
+        const entry = JSON.parse(line) as RawJSONLEntry
 
-      if (isFileHistorySnapshot(entry)) {
-        continue
-      }
-
-      // Extract agent links from progress messages
-      if (isProgressMessage(entry)) {
-        if (entry.data?.agentId && entry.parentToolUseID) {
-          agentLinks[entry.data.agentId] = entry.parentToolUseID
-        }
-        continue
-      }
-
-      if (isUserMessage(entry) || isAssistantMessage(entry)) {
-        // Extract session metadata from first message
-        if (!metadataExtracted) {
-          metadataExtracted = true
-          cwd = entry.cwd
-          version = entry.version
-          gitBranch = entry.gitBranch || null
+        if (isFileHistorySnapshot(entry)) {
+          continue
         }
 
-        const timestamp = new Date(entry.timestamp).getTime()
-        if (startTime === null || timestamp < startTime) {
-          startTime = timestamp
-        }
-        if (endTime === null || timestamp > endTime) {
-          endTime = timestamp
+        // Extract agent links from progress messages
+        if (isProgressMessage(entry)) {
+          if (entry.data?.agentId && entry.parentToolUseID) {
+            agentLinks[entry.data.agentId] = entry.parentToolUseID
+          }
+          continue
         }
 
-        const processed = processMessage(entry)
+        if (isUserMessage(entry) || isAssistantMessage(entry)) {
+          // Extract session metadata from first message
+          if (!metadataExtracted) {
+            metadataExtracted = true
+            cwd = entry.cwd
+            version = entry.version
+            gitBranch = entry.gitBranch || null
+          }
 
-        // If this is a user message with tool results, store them for later merging
-        if (isUserMessage(entry)) {
-          for (const [toolId, result] of Object.entries(processed.toolResults)) {
-            pendingToolResults[toolId] = result
+          const timestamp = new Date(entry.timestamp).getTime()
+          if (startTime === null || timestamp < startTime) {
+            startTime = timestamp
+          }
+          if (endTime === null || timestamp > endTime) {
+            endTime = timestamp
+          }
+
+          const processed = processMessage(entry)
+
+          // If this is a user message with tool results, store them for later merging
+          if (isUserMessage(entry)) {
+            for (const [toolId, result] of Object.entries(processed.toolResults)) {
+              pendingToolResults[toolId] = result
+            }
+          }
+
+          // Only add non-empty messages or messages with tool uses
+          if (
+            processed.textContent.trim() ||
+            processed.toolUseBlocks.length > 0 ||
+            processed.thinkingBlocks.length > 0
+          ) {
+            messages.push(processed)
           }
         }
-
-        // Only add non-empty messages or messages with tool uses
-        if (
-          processed.textContent.trim() ||
-          processed.toolUseBlocks.length > 0 ||
-          processed.thinkingBlocks.length > 0
-        ) {
-          messages.push(processed)
-        }
+      } catch (e) {
+        // Skip malformed JSON lines
+        console.warn(`Failed to parse line in ${filePath}:`, e)
       }
-    } catch (e) {
-      // Skip malformed JSON lines
-      console.warn(`Failed to parse line in ${filePath}:`, e)
     }
+  } finally {
+    rl.close()
+    fileStream.destroy()
   }
 
   // Merge tool results into corresponding tool use messages
@@ -356,49 +388,54 @@ export async function getSessionSummary(filePath: string): Promise<SessionSummar
     crlfDelay: Infinity,
   })
 
-  for await (const line of rl) {
-    if (!line.trim()) continue
+  try {
+    for await (const line of rl) {
+      if (!line.trim()) continue
 
-    try {
-      const entry = JSON.parse(line) as RawJSONLEntry
+      try {
+        const entry = JSON.parse(line) as RawJSONLEntry
 
-      if (isFileHistorySnapshot(entry)) {
-        continue
+        if (isFileHistorySnapshot(entry)) {
+          continue
+        }
+
+        if (isUserMessage(entry) || isAssistantMessage(entry)) {
+          messageCount++
+
+          if (!metadataExtracted) {
+            metadataExtracted = true
+            gitBranch = entry.gitBranch || null
+          }
+
+          // Capture first user message as summary
+          if (!firstMessage && isUserMessage(entry)) {
+            const content = entry.message.content
+            firstMessage =
+              typeof content === 'string'
+                ? content.slice(0, 200)
+                : extractTextContent(content).slice(0, 200)
+          }
+
+          // Track model from assistant messages
+          if (!model && isAssistantMessage(entry) && entry.message.model) {
+            model = entry.message.model
+          }
+
+          const timestamp = new Date(entry.timestamp).getTime()
+          if (startTime === null || timestamp < startTime) {
+            startTime = timestamp
+          }
+          if (endTime === null || timestamp > endTime) {
+            endTime = timestamp
+          }
+        }
+      } catch (e) {
+        console.warn(`Failed to parse line in ${filePath}:`, e)
       }
-
-      if (isUserMessage(entry) || isAssistantMessage(entry)) {
-        messageCount++
-
-        if (!metadataExtracted) {
-          metadataExtracted = true
-          gitBranch = entry.gitBranch || null
-        }
-
-        // Capture first user message as summary
-        if (!firstMessage && isUserMessage(entry)) {
-          const content = entry.message.content
-          firstMessage =
-            typeof content === 'string'
-              ? content.slice(0, 200)
-              : extractTextContent(content).slice(0, 200)
-        }
-
-        // Track model from assistant messages
-        if (!model && isAssistantMessage(entry) && entry.message.model) {
-          model = entry.message.model
-        }
-
-        const timestamp = new Date(entry.timestamp).getTime()
-        if (startTime === null || timestamp < startTime) {
-          startTime = timestamp
-        }
-        if (endTime === null || timestamp > endTime) {
-          endTime = timestamp
-        }
-      }
-    } catch (e) {
-      console.warn(`Failed to parse line in ${filePath}:`, e)
     }
+  } finally {
+    rl.close()
+    fileStream.destroy()
   }
 
   // Return null if no messages were found
@@ -469,36 +506,37 @@ export async function listSessionFiles(projectEncoded: string): Promise<string[]
 
 /**
  * Get all sessions grouped by project
- * Uses parallel I/O for faster startup
+ * Uses controlled parallel I/O to prevent resource exhaustion
  */
 export async function getAllSessions(): Promise<ProjectGroup[]> {
   const projects = await listProjects()
 
-  // Process all projects in parallel
-  const groupResults = await Promise.all(
-    projects.map(async (projectEncoded): Promise<ProjectGroup | null> => {
-      const sessionFiles = await listSessionFiles(projectEncoded)
+  // Process projects with concurrency limit to prevent resource exhaustion
+  const projectTasks = projects.map((projectEncoded) => async (): Promise<ProjectGroup | null> => {
+    const sessionFiles = await listSessionFiles(projectEncoded)
 
-      // Process all session files within a project in parallel
-      const summaryResults = await Promise.all(sessionFiles.map((filePath) => getSessionSummary(filePath)))
+    // Process session files with concurrency limit
+    const summaryTasks = sessionFiles.map((filePath) => () => getSessionSummary(filePath))
+    const summaryResults = await pLimit(summaryTasks, MAX_CONCURRENT_OPERATIONS)
 
-      // Filter out null results
-      const sessions = summaryResults.filter((s): s is SessionSummary => s !== null)
+    // Filter out null results
+    const sessions = summaryResults.filter((s): s is SessionSummary => s !== null)
 
-      if (sessions.length === 0) {
-        return null
-      }
+    if (sessions.length === 0) {
+      return null
+    }
 
-      // Sort sessions by start time (newest first)
-      sessions.sort((a, b) => (b.startTime || 0) - (a.startTime || 0))
+    // Sort sessions by start time (newest first)
+    sessions.sort((a, b) => (b.startTime || 0) - (a.startTime || 0))
 
-      return {
-        project: decodeProjectPath(projectEncoded),
-        projectEncoded,
-        sessions,
-      }
-    })
-  )
+    return {
+      project: decodeProjectPath(projectEncoded),
+      projectEncoded,
+      sessions,
+    }
+  })
+
+  const groupResults = await pLimit(projectTasks, MAX_CONCURRENT_OPERATIONS)
 
   // Filter out null groups and sort by most recent session
   const groups = groupResults.filter((g): g is ProjectGroup => g !== null)
@@ -565,38 +603,43 @@ async function parseSubagentFile(filePath: string): Promise<ProcessedMessage[]> 
     crlfDelay: Infinity,
   })
 
-  for await (const line of rl) {
-    if (!line.trim()) continue
+  try {
+    for await (const line of rl) {
+      if (!line.trim()) continue
 
-    try {
-      const entry = JSON.parse(line) as RawJSONLEntry
+      try {
+        const entry = JSON.parse(line) as RawJSONLEntry
 
-      if (isFileHistorySnapshot(entry) || isProgressMessage(entry)) {
-        continue
-      }
+        if (isFileHistorySnapshot(entry) || isProgressMessage(entry)) {
+          continue
+        }
 
-      if (isUserMessage(entry) || isAssistantMessage(entry)) {
-        const processed = processMessage(entry)
+        if (isUserMessage(entry) || isAssistantMessage(entry)) {
+          const processed = processMessage(entry)
 
-        // If this is a user message with tool results, store them for later merging
-        if (isUserMessage(entry)) {
-          for (const [toolId, result] of Object.entries(processed.toolResults)) {
-            pendingToolResults[toolId] = result
+          // If this is a user message with tool results, store them for later merging
+          if (isUserMessage(entry)) {
+            for (const [toolId, result] of Object.entries(processed.toolResults)) {
+              pendingToolResults[toolId] = result
+            }
+          }
+
+          // Only add non-empty messages or messages with tool uses
+          if (
+            processed.textContent.trim() ||
+            processed.toolUseBlocks.length > 0 ||
+            processed.thinkingBlocks.length > 0
+          ) {
+            messages.push(processed)
           }
         }
-
-        // Only add non-empty messages or messages with tool uses
-        if (
-          processed.textContent.trim() ||
-          processed.toolUseBlocks.length > 0 ||
-          processed.thinkingBlocks.length > 0
-        ) {
-          messages.push(processed)
-        }
+      } catch {
+        // Skip malformed JSON lines
       }
-    } catch {
-      // Skip malformed JSON lines
     }
+  } finally {
+    rl.close()
+    fileStream.destroy()
   }
 
   // Merge tool results into corresponding tool use messages

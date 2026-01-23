@@ -2,6 +2,34 @@ import { createSlice, createAsyncThunk, createSelector, type PayloadAction } fro
 import type { Session, ProjectGroup } from '@/../electron/shared/types'
 import type { RootState } from '@/store'
 
+// Debounced localStorage persistence to prevent blocking UI on rapid state changes
+const pendingPersists: Map<string, { value: string; timeout: ReturnType<typeof setTimeout> }> =
+  new Map()
+const PERSIST_DEBOUNCE_MS = 300
+
+function debouncedPersist(key: string, value: unknown) {
+  // Serialize value immediately to avoid Immer proxy issues
+  const serialized = JSON.stringify(value)
+
+  // Clear any pending timeout for this key
+  const pending = pendingPersists.get(key)
+  if (pending) {
+    clearTimeout(pending.timeout)
+  }
+
+  // Schedule persistence asynchronously
+  const timeout = setTimeout(() => {
+    try {
+      localStorage.setItem(key, serialized)
+    } catch (e) {
+      console.warn(`Failed to persist ${key} to localStorage:`, e)
+    }
+    pendingPersists.delete(key)
+  }, PERSIST_DEBOUNCE_MS)
+
+  pendingPersists.set(key, { value: serialized, timeout })
+}
+
 interface SessionsState {
   projectGroups: ProjectGroup[]
   currentSession: Session | null
@@ -111,30 +139,30 @@ const sessionsSlice = createSlice({
     clearError: (state) => {
       state.error = null
     },
-    // Hidden state actions
+    // Hidden state actions - use debounced persistence to avoid UI blocking
     hideProject: (state, action: PayloadAction<string>) => {
       if (!state.hiddenProjects.includes(action.payload)) {
         state.hiddenProjects.push(action.payload)
-        localStorage.setItem('hiddenProjects', JSON.stringify(state.hiddenProjects))
+        debouncedPersist('hiddenProjects', state.hiddenProjects)
       }
     },
     unhideProject: (state, action: PayloadAction<string>) => {
       state.hiddenProjects = state.hiddenProjects.filter((id) => id !== action.payload)
-      localStorage.setItem('hiddenProjects', JSON.stringify(state.hiddenProjects))
+      debouncedPersist('hiddenProjects', state.hiddenProjects)
     },
     hideSession: (state, action: PayloadAction<string>) => {
       if (!state.hiddenSessions.includes(action.payload)) {
         state.hiddenSessions.push(action.payload)
-        localStorage.setItem('hiddenSessions', JSON.stringify(state.hiddenSessions))
+        debouncedPersist('hiddenSessions', state.hiddenSessions)
       }
     },
     unhideSession: (state, action: PayloadAction<string>) => {
       state.hiddenSessions = state.hiddenSessions.filter((id) => id !== action.payload)
-      localStorage.setItem('hiddenSessions', JSON.stringify(state.hiddenSessions))
+      debouncedPersist('hiddenSessions', state.hiddenSessions)
     },
     toggleShowHidden: (state) => {
       state.showHidden = !state.showHidden
-      localStorage.setItem('showHidden', String(state.showHidden))
+      debouncedPersist('showHidden', state.showHidden)
     },
   },
   extraReducers: (builder) => {

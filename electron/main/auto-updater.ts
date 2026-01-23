@@ -11,9 +11,16 @@ autoUpdater.autoDownload = false
 autoUpdater.autoInstallOnAppQuit = true
 
 let mainWindow: BrowserWindow | null = null
+let listenersInitialized = false
 
 export function initAutoUpdater(window: BrowserWindow) {
   mainWindow = window
+
+  // Only register listeners once to prevent accumulation
+  if (!listenersInitialized) {
+    setupAutoUpdaterListeners()
+    listenersInitialized = true
+  }
 
   // Check for updates on startup (after a short delay)
   setTimeout(() => {
@@ -23,51 +30,60 @@ export function initAutoUpdater(window: BrowserWindow) {
   }, 3000)
 }
 
-// Event handlers
-autoUpdater.on('checking-for-update', () => {
-  log.info('Checking for update...')
-  sendToRenderer('update:checking')
-})
+function setupAutoUpdaterListeners() {
+  // Remove any existing listeners first to prevent accumulation
+  autoUpdater.removeAllListeners('checking-for-update')
+  autoUpdater.removeAllListeners('update-available')
+  autoUpdater.removeAllListeners('update-not-available')
+  autoUpdater.removeAllListeners('download-progress')
+  autoUpdater.removeAllListeners('update-downloaded')
+  autoUpdater.removeAllListeners('error')
 
-autoUpdater.on('update-available', (info: UpdateInfo) => {
-  log.info('Update available:', info.version)
-  sendToRenderer('update:available', {
-    version: info.version,
-    releaseDate: info.releaseDate,
-    releaseName: info.releaseName,
-    releaseNotes: info.releaseNotes,
+  autoUpdater.on('checking-for-update', () => {
+    log.info('Checking for update...')
+    sendToRenderer('update:checking')
   })
-})
 
-autoUpdater.on('update-not-available', () => {
-  log.info('Update not available')
-  sendToRenderer('update:not-available')
-})
-
-autoUpdater.on('download-progress', (progress) => {
-  log.info(`Download progress: ${progress.percent.toFixed(1)}%`)
-  sendToRenderer('update:progress', {
-    percent: progress.percent,
-    bytesPerSecond: progress.bytesPerSecond,
-    transferred: progress.transferred,
-    total: progress.total,
+  autoUpdater.on('update-available', (info: UpdateInfo) => {
+    log.info('Update available:', info.version)
+    sendToRenderer('update:available', {
+      version: info.version,
+      releaseDate: info.releaseDate,
+      releaseName: info.releaseName,
+      releaseNotes: info.releaseNotes,
+    })
   })
-})
 
-autoUpdater.on('update-downloaded', (info: UpdateInfo) => {
-  log.info('Update downloaded:', info.version)
-  sendToRenderer('update:downloaded', {
-    version: info.version,
-    releaseDate: info.releaseDate,
-    releaseName: info.releaseName,
-    releaseNotes: info.releaseNotes,
+  autoUpdater.on('update-not-available', () => {
+    log.info('Update not available')
+    sendToRenderer('update:not-available')
   })
-})
 
-autoUpdater.on('error', (error) => {
-  log.error('Update error:', error)
-  sendToRenderer('update:error', error.message)
-})
+  autoUpdater.on('download-progress', (progress) => {
+    log.info(`Download progress: ${progress.percent.toFixed(1)}%`)
+    sendToRenderer('update:progress', {
+      percent: progress.percent,
+      bytesPerSecond: progress.bytesPerSecond,
+      transferred: progress.transferred,
+      total: progress.total,
+    })
+  })
+
+  autoUpdater.on('update-downloaded', (info: UpdateInfo) => {
+    log.info('Update downloaded:', info.version)
+    sendToRenderer('update:downloaded', {
+      version: info.version,
+      releaseDate: info.releaseDate,
+      releaseName: info.releaseName,
+      releaseNotes: info.releaseNotes,
+    })
+  })
+
+  autoUpdater.on('error', (error) => {
+    log.error('Update error:', error)
+    sendToRenderer('update:error', error.message)
+  })
+}
 
 function sendToRenderer(channel: string, data?: unknown) {
   if (mainWindow && !mainWindow.isDestroyed()) {

@@ -11,9 +11,12 @@ interface WindowState {
 
 const DEFAULT_WIDTH = 1200
 const DEFAULT_HEIGHT = 800
+const SAVE_DEBOUNCE_MS = 500
 
 export class WindowStateManager {
   private store: Store<{ windowState: WindowState }>
+  private saveTimeout: ReturnType<typeof setTimeout> | null = null
+  private trackedWindow: BrowserWindow | null = null
 
   constructor() {
     this.store = new Store<{ windowState: WindowState }>({
@@ -65,17 +68,37 @@ export class WindowStateManager {
   }
 
   track(window: BrowserWindow) {
-    // Save state on resize and move
-    const saveBounds = () => {
-      if (!window.isMaximized() && !window.isMinimized() && !window.isFullScreen()) {
-        this.saveState(window)
+    // Prevent multiple registrations for the same window
+    if (this.trackedWindow === window) {
+      return
+    }
+    this.trackedWindow = window
+
+    // Debounced save to prevent excessive I/O during rapid resize/move
+    const debouncedSave = () => {
+      if (this.saveTimeout) {
+        clearTimeout(this.saveTimeout)
       }
+      this.saveTimeout = setTimeout(() => {
+        if (!window.isMaximized() && !window.isMinimized() && !window.isFullScreen()) {
+          this.saveState(window)
+        }
+      }, SAVE_DEBOUNCE_MS)
     }
 
-    window.on('resize', saveBounds)
-    window.on('move', saveBounds)
+    window.on('resize', debouncedSave)
+    window.on('move', debouncedSave)
     window.on('maximize', () => this.saveMaximizedState(true))
     window.on('unmaximize', () => this.saveMaximizedState(false))
+
+    // Clean up timeout when window is closed
+    window.on('closed', () => {
+      if (this.saveTimeout) {
+        clearTimeout(this.saveTimeout)
+        this.saveTimeout = null
+      }
+      this.trackedWindow = null
+    })
   }
 
   saveState(window: BrowserWindow) {
