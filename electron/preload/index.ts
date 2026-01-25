@@ -1,5 +1,5 @@
 import { contextBridge, ipcRenderer } from 'electron'
-import type { ElectronAPI, UpdateInfo, UpdateProgress } from '../shared/types'
+import type { ElectronAPI, UpdateInfo, UpdateProgress, PetStateInfo } from '../shared/types'
 
 // Expose protected methods that allow the renderer process to use
 // ipcRenderer without exposing the entire object
@@ -119,6 +119,22 @@ const electronAPI: ElectronAPI = {
     ipcRenderer.on('update:error', subscription)
     return () => {
       ipcRenderer.removeListener('update:error', subscription)
+    }
+  },
+
+  // Pet - Floating session monitor cat
+  petStartDrag: () => ipcRenderer.send('pet:startDrag'),
+  petEndDrag: () => ipcRenderer.send('pet:endDrag'),
+  petDragMove: (delta) => ipcRenderer.send('pet:dragMove', delta),
+  petGetSettings: () => ipcRenderer.invoke('pet:getSettings'),
+  petSetSettings: (settings) => ipcRenderer.invoke('pet:setSettings', settings),
+  petGetState: () => ipcRenderer.invoke('pet:getState'),
+  onPetStateChange: (callback) => {
+    const subscription = (_event: Electron.IpcRendererEvent, state: PetStateInfo) =>
+      callback(state)
+    ipcRenderer.on('pet:stateChange', subscription)
+    return () => {
+      ipcRenderer.removeListener('pet:stateChange', subscription)
     }
   },
 }

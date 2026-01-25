@@ -76,4 +76,29 @@ global.window.electron = {
   onUpdateProgress: () => () => {},
   onUpdateDownloaded: () => () => {},
   onUpdateError: () => () => {},
+  // Pet mocks
+  petStartDrag: () => {},
+  petEndDrag: () => {},
+  petDragMove: () => {},
+  petGetSettings: async () => ({
+    success: true,
+    data: {
+      enabled: true,
+      position: { x: 100, y: 100 },
+      size: 'medium' as const,
+      notificationsEnabled: true,
+      character: 'cat' as const,
+    },
+  }),
+  petSetSettings: async () => ({ success: true, data: undefined }),
+  petGetState: async () => ({
+    success: true,
+    data: {
+      state: 'idle' as const,
+      sessionId: null,
+      project: null,
+      lastActivity: Date.now(),
+    },
+  }),
+  onPetStateChange: () => () => {},
 }
