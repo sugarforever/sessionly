@@ -1,0 +1,5 @@
+export { CatSprite } from './CatSprite'
+export { BunnySprite } from './BunnySprite'
+export { PuppySprite } from './PuppySprite'
+export { PiggySprite } from './PiggySprite'
+export type { CharacterProps } from './types'

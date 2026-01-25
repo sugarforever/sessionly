@@ -20,7 +20,10 @@ import type {
   ProjectGroup,
 } from './session-types'
 
+import type { PetStateInfo, PetSettings } from './pet-types'
+
 export type { SessionSummary, Session, ProjectGroup }
+export type { PetStateInfo, PetSettings }
 
 // Terminal types
 export interface TerminalSpawnOptions {
@@ -89,6 +92,15 @@ export interface ElectronAPI {
   onUpdateProgress: (callback: (progress: UpdateProgress) => void) => () => void
   onUpdateDownloaded: (callback: (info: UpdateInfo) => void) => () => void
   onUpdateError: (callback: (error: string) => void) => () => void
+
+  // Pet - Floating session monitor cat
+  petStartDrag: () => void
+  petEndDrag: () => void
+  petDragMove: (delta: { deltaX: number; deltaY: number }) => void
+  petGetSettings: () => Promise<IpcResponse<PetSettings>>
+  petSetSettings: (settings: Partial<PetSettings>) => Promise<IpcResponse<void>>
+  petGetState: () => Promise<IpcResponse<PetStateInfo>>
+  onPetStateChange: (callback: (state: PetStateInfo) => void) => () => void
 }
 
 export type IpcChannels =
@@ -118,6 +130,13 @@ export type IpcChannels =
   | 'update:progress'
   | 'update:downloaded'
   | 'update:error'
+  | 'pet:startDrag'
+  | 'pet:endDrag'
+  | 'pet:dragMove'
+  | 'pet:getSettings'
+  | 'pet:setSettings'
+  | 'pet:getState'
+  | 'pet:stateChange'
 
 declare global {
   interface Window {

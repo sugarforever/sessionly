@@ -5,6 +5,8 @@ import { WindowStateManager } from './window-state-manager'
 import { setupIPC } from './ipc-handlers'
 import { createSystemTray } from './system-tray'
 import { initAutoUpdater, setupAutoUpdaterIPC } from './auto-updater'
+import { getSessionMonitor } from './services/session-monitor'
+import { createPetWindow, setupPetIPC, destroyPetWindow, getPetSettings } from './pet-window'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 
@@ -88,12 +90,23 @@ app.whenReady().then(() => {
   // Setup IPC handlers
   setupIPC()
   setupAutoUpdaterIPC()
+  setupPetIPC()
 
   // Create window
   createWindow()
 
   // Create system tray
   tray = createSystemTray(mainWindow)
+
+  // Start session monitor and create pet window
+  const sessionMonitor = getSessionMonitor()
+  sessionMonitor.start()
+
+  // Create pet window if enabled
+  const petSettings = getPetSettings()
+  if (petSettings.enabled) {
+    createPetWindow()
+  }
 
   // Initialize auto-updater (production only)
   if (!VITE_DEV_SERVER_URL && mainWindow) {
@@ -125,4 +138,6 @@ app.on('before-quit', () => {
 // Cleanup
 app.on('will-quit', () => {
   tray?.destroy()
+  destroyPetWindow()
+  getSessionMonitor().stop()
 })
