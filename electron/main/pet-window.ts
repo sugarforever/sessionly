@@ -10,8 +10,9 @@ import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import Store from 'electron-store'
 import type { PetSettings, PetStateInfo } from '../shared/pet-types'
-import { DEFAULT_PET_SETTINGS, PET_SIZE_PIXELS } from '../shared/pet-types'
+import { DEFAULT_PET_SETTINGS, PET_SIZE_PIXELS, PET_PANEL_WIDTH, PET_PANEL_GAP, PET_PANEL_HEIGHT, PET_WINDOW_PADDING } from '../shared/pet-types'
 import { getSessionMonitor } from './services/session-monitor'
+import { updateTrayTooltip } from './system-tray'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 
@@ -29,11 +30,43 @@ let stateChangeHandler: ((state: PetStateInfo) => void) | null = null
 let completedHandler: ((state: PetStateInfo) => void) | null = null
 let errorHandler: ((state: PetStateInfo) => void) | null = null
 
+// 'left' means panel appears to the left of pet (pet is on right side of screen)
+// 'right' means panel appears to the right of pet (pet is on left side of screen)
+type PanelSide = 'left' | 'right'
+
 /**
- * Get current pet settings
+ * Determine which side the panel should appear based on pet position
+ */
+function calculatePanelSide(): PanelSide {
+  if (!petWindow) return 'left'
+
+  const [x] = petWindow.getPosition()
+  const [width] = petWindow.getSize()
+  const display = screen.getDisplayNearestPoint({ x, y: 0 })
+  const screenMidpoint = display.bounds.x + display.bounds.width / 2
+
+  // If pet is on the right half of screen, show panel on left
+  // If pet is on the left half, show panel on right
+  const petCenterX = x + width / 2
+  return petCenterX > screenMidpoint ? 'left' : 'right'
+}
+
+/**
+ * Send panel side preference to renderer
+ */
+function sendPanelSide(): void {
+  if (petWindow && !petWindow.isDestroyed()) {
+    const side = calculatePanelSide()
+    petWindow.webContents.send('pet:panelSide', side)
+  }
+}
+
+/**
+ * Get current pet settings (merged with defaults for forward compatibility)
  */
 export function getPetSettings(): PetSettings {
-  return petStore.get('petSettings')
+  const stored = petStore.get('petSettings')
+  return { ...DEFAULT_PET_SETTINGS, ...stored }
 }
 
 /**
@@ -41,12 +74,27 @@ export function getPetSettings(): PetSettings {
  */
 export function setPetSettings(settings: Partial<PetSettings>): void {
   const current = getPetSettings()
-  petStore.set('petSettings', { ...current, ...settings })
+  const newSettings = { ...current, ...settings }
+  petStore.set('petSettings', newSettings)
 
   // Apply size change if pet window exists
   if (petWindow && settings.size) {
-    const size = PET_SIZE_PIXELS[settings.size]
-    petWindow.setSize(size, size)
+    const petSize = PET_SIZE_PIXELS[settings.size]
+    const windowWidth = petSize + PET_PANEL_GAP + PET_PANEL_WIDTH + PET_WINDOW_PADDING
+    const windowHeight = Math.max(petSize, PET_PANEL_HEIGHT) + PET_WINDOW_PADDING
+    petWindow.setSize(windowWidth, windowHeight)
+  }
+
+  // Notify the pet window of settings change
+  sendPetSettings(newSettings)
+}
+
+/**
+ * Send pet settings to the renderer
+ */
+export function sendPetSettings(settings: PetSettings): void {
+  if (petWindow && !petWindow.isDestroyed()) {
+    petWindow.webContents.send('pet:settingsChange', settings)
   }
 }
 
@@ -61,14 +109,17 @@ export function createPetWindow(): BrowserWindow | null {
   }
 
   // Get window size based on settings
-  const size = PET_SIZE_PIXELS[settings.size]
+  const petSize = PET_SIZE_PIXELS[settings.size]
+  // Window fits pet + panel side by side, height accommodates the taller element
+  const windowWidth = petSize + PET_PANEL_GAP + PET_PANEL_WIDTH + PET_WINDOW_PADDING
+  const windowHeight = Math.max(petSize, PET_PANEL_HEIGHT) + PET_WINDOW_PADDING
 
   // Validate position is on screen
-  const position = validatePosition(settings.position, size)
+  const position = validatePosition(settings.position, windowWidth)
 
   petWindow = new BrowserWindow({
-    width: size,
-    height: size,
+    width: windowWidth,
+    height: windowHeight,
     x: position.x,
     y: position.y,
     frame: false,
@@ -104,6 +155,8 @@ export function createPetWindow(): BrowserWindow | null {
       const [x, y] = petWindow.getPosition()
       setPetSettings({ position: { x, y } })
     }
+    // Update panel side when window moves
+    sendPanelSide()
   })
 
   petWindow.on('closed', () => {
@@ -116,6 +169,7 @@ export function createPetWindow(): BrowserWindow | null {
 
   stateChangeHandler = (state: PetStateInfo) => {
     sendPetState(state)
+    updateTrayTooltip(state)
   }
   monitor.on('stateChange', stateChangeHandler)
 
@@ -123,7 +177,7 @@ export function createPetWindow(): BrowserWindow | null {
   completedHandler = (state: PetStateInfo) => {
     const settings = getPetSettings()
     if (settings.notificationsEnabled) {
-      showPetNotification('Task Completed', `Session in ${state.project || 'project'} finished`)
+      showPetNotification('Ready for Input', `${state.project || 'Session'} is waiting for you`)
     }
   }
   monitor.on('completed', completedHandler)
@@ -131,7 +185,8 @@ export function createPetWindow(): BrowserWindow | null {
   errorHandler = (state: PetStateInfo) => {
     const settings = getPetSettings()
     if (settings.notificationsEnabled) {
-      showPetNotification('Error Occurred', `An error occurred in ${state.project || 'session'}`)
+      const errorMsg = state.errorMessage ? `: ${state.errorMessage}` : ''
+      showPetNotification('Error Occurred', `${state.project || 'Session'} hit an error${errorMsg}`)
     }
   }
   monitor.on('error', errorHandler)
@@ -267,6 +322,20 @@ function showPetNotification(title: string, body: string): void {
  * Setup IPC handlers for pet window
  */
 export function setupPetIPC(): void {
+  // Mouse entered pet - enable mouse events for interaction
+  ipcMain.on('pet:mouseEnter', () => {
+    if (petWindow) {
+      petWindow.setIgnoreMouseEvents(false)
+    }
+  })
+
+  // Mouse left pet - re-enable click-through (unless dragging)
+  ipcMain.on('pet:mouseLeave', () => {
+    if (petWindow && !isDragging) {
+      petWindow.setIgnoreMouseEvents(true, { forward: true })
+    }
+  })
+
   // Start dragging - enable mouse events
   ipcMain.on('pet:startDrag', () => {
     if (petWindow) {
@@ -275,13 +344,16 @@ export function setupPetIPC(): void {
     }
   })
 
-  // End dragging - save position and disable mouse events
+  // End dragging - save position (don't disable mouse events here - let mouseLeave handle that)
   ipcMain.on('pet:endDrag', () => {
     if (petWindow) {
       isDragging = false
       const [x, y] = petWindow.getPosition()
       setPetSettings({ position: { x, y } })
-      petWindow.setIgnoreMouseEvents(true, { forward: true })
+      // Don't re-enable click-through here - the user may still be hovering
+      // to interact with the panel. mouseLeave will handle it when they leave.
+      // Update panel side after drag ends
+      sendPanelSide()
     }
   })
 
@@ -308,6 +380,11 @@ export function setupPetIPC(): void {
   ipcMain.handle('pet:getState', () => {
     const monitor = getSessionMonitor()
     return { success: true, data: monitor.getState() }
+  })
+
+  // Get panel side preference
+  ipcMain.handle('pet:getPanelSide', () => {
+    return { success: true, data: calculatePanelSide() }
   })
 }
 

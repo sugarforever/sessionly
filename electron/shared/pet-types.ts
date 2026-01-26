@@ -19,6 +19,11 @@ export interface PetStateInfo {
   project: string | null
   lastActivity: number
   message?: string
+  // Enhanced context for tooltip
+  gitBranch?: string | null
+  toolName?: string | null
+  errorMessage?: string | null
+  activeSessionCount?: number
 }
 
 export interface PetSettings {
@@ -31,7 +36,7 @@ export interface PetSettings {
 
 export const DEFAULT_PET_SETTINGS: PetSettings = {
   enabled: true,
-  position: { x: 100, y: 100 },
+  position: { x: -1, y: -1 }, // Sentinel value - will be calculated to bottom-right
   size: 'medium',
   notificationsEnabled: true,
   character: 'cat',
@@ -42,3 +47,12 @@ export const PET_SIZE_PIXELS: Record<PetSettings['size'], number> = {
   medium: 96,
   large: 128,
 }
+
+// Detail panel dimensions (positioned to side of pet)
+export const PET_PANEL_WIDTH = 220
+export const PET_PANEL_GAP = 8
+export const PET_PANEL_HEIGHT = 250 // Approximate max height of detail panel
+
+// Window needs to fit pet + panel side by side
+// Height must accommodate the panel which is taller than the pet
+export const PET_WINDOW_PADDING = 16

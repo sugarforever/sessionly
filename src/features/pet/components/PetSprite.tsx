@@ -14,6 +14,6 @@ const CHARACTER_COMPONENTS: Record<PetCharacter, React.ComponentType<{ state: Pe
 }
 
 export function PetSprite({ state, character }: PetSpriteProps): JSX.Element {
-  const CharacterComponent = CHARACTER_COMPONENTS[character]
+  const CharacterComponent = CHARACTER_COMPONENTS[character] ?? CatSprite
   return <CharacterComponent state={state} />
 }

@@ -77,6 +77,8 @@ global.window.electron = {
   onUpdateDownloaded: () => () => {},
   onUpdateError: () => () => {},
   // Pet mocks
+  petMouseEnter: () => {},
+  petMouseLeave: () => {},
   petStartDrag: () => {},
   petEndDrag: () => {},
   petDragMove: () => {},
@@ -101,4 +103,7 @@ global.window.electron = {
     },
   }),
   onPetStateChange: () => () => {},
+  onPetSettingsChange: () => () => {},
+  petGetPanelSide: async () => ({ success: true, data: 'left' as const }),
+  onPetPanelSideChange: () => () => {},
 }
