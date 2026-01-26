@@ -20,10 +20,10 @@ import type {
   ProjectGroup,
 } from './session-types'
 
-import type { PetStateInfo, PetSettings } from './pet-types'
+import type { PetStateInfo, PetSettings, CustomSprite } from './pet-types'
 
 export type { SessionSummary, Session, ProjectGroup }
-export type { PetStateInfo, PetSettings }
+export type { PetStateInfo, PetSettings, CustomSprite }
 
 // Terminal types
 export interface TerminalSpawnOptions {
@@ -106,6 +106,19 @@ export interface ElectronAPI {
   onPetSettingsChange: (callback: (settings: PetSettings) => void) => () => void
   petGetPanelSide: () => Promise<IpcResponse<'left' | 'right'>>
   onPetPanelSideChange: (callback: (side: 'left' | 'right') => void) => () => void
+
+  // Custom Sprites - Pet sprite sheet management
+  spritesGetAll: () => Promise<IpcResponse<CustomSprite[]>>
+  spritesGet: (id: string) => Promise<IpcResponse<CustomSprite | null>>
+  spritesImport: (
+    name: string,
+    config?: Partial<Omit<CustomSprite, 'id' | 'name' | 'imagePath'>>
+  ) => Promise<IpcResponse<CustomSprite>>
+  spritesUpdate: (
+    id: string,
+    updates: Partial<Omit<CustomSprite, 'id' | 'imagePath'>>
+  ) => Promise<IpcResponse<CustomSprite | null>>
+  spritesDelete: (id: string) => Promise<IpcResponse<boolean>>
 }
 
 export type IpcChannels =
@@ -143,6 +156,11 @@ export type IpcChannels =
   | 'pet:getState'
   | 'pet:stateChange'
   | 'pet:settingsChange'
+  | 'sprites:getAll'
+  | 'sprites:get'
+  | 'sprites:import'
+  | 'sprites:update'
+  | 'sprites:delete'
 
 declare global {
   interface Window {

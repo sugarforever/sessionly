@@ -8,7 +8,7 @@ import {
   setPetSettings,
 } from './pet-window'
 import { PET_CHARACTER_NAMES } from '../shared/pet-types'
-import type { PetCharacter, PetStateInfo } from '../shared/pet-types'
+import type { BuiltInCharacter, PetStateInfo } from '../shared/pet-types'
 
 let systemTray: Tray | null = null
 
@@ -102,7 +102,7 @@ export function createSystemTray(mainWindow: BrowserWindow | null): Tray {
         },
         {
           label: 'Character',
-          submenu: (Object.keys(PET_CHARACTER_NAMES) as PetCharacter[]).map((character) => ({
+          submenu: (Object.keys(PET_CHARACTER_NAMES) as BuiltInCharacter[]).map((character) => ({
             label: PET_CHARACTER_NAMES[character],
             type: 'radio' as const,
             checked: settings.character === character,

@@ -106,4 +106,10 @@ global.window.electron = {
   onPetSettingsChange: () => () => {},
   petGetPanelSide: async () => ({ success: true, data: 'left' as const }),
   onPetPanelSideChange: () => () => {},
+  // Custom sprites mocks
+  spritesGetAll: async () => ({ success: true, data: [] }),
+  spritesGet: async () => ({ success: true, data: null }),
+  spritesImport: async () => ({ success: false, error: 'Import cancelled' }),
+  spritesUpdate: async () => ({ success: true, data: null }),
+  spritesDelete: async () => ({ success: true, data: false }),
 }

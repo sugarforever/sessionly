@@ -59,6 +59,21 @@ html, body {
   transition: transform 0.2s ease;
 }
 
+/* Sprite sheet character styles */
+.sprite-sheet-character {
+  image-rendering: pixelated;
+  image-rendering: crisp-edges;
+  -webkit-image-rendering: pixelated;
+  /* IMPORTANT: No transition on background - frames must snap, not slide */
+  transition: none;
+}
+
+/* Wrapper for sprite sheet to handle scaling properly */
+.sprite-sheet-wrapper {
+  overflow: hidden;
+  transition: transform 0.2s ease;
+}
+
 /* GPU acceleration hints for animated elements */
 .pet-body,
 .pet-eyes,
