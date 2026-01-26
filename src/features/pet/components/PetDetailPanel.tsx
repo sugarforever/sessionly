@@ -7,10 +7,10 @@ interface PetDetailPanelProps {
 }
 
 const STATUS_LABELS: Record<PetState, string> = {
-  idle: 'Idle - No active sessions',
+  idle: 'Idle',
   working: 'Working...',
-  completed: 'Ready for input',
-  error: 'Error occurred',
+  completed: 'Ready',
+  error: 'Error',
 }
 
 const STATUS_ICONS: Record<PetState, string> = {
@@ -47,78 +47,48 @@ export function PetDetailPanel({ state, isVisible, onClose }: PetDetailPanelProp
 
   return (
     <>
-      {/* Backdrop to catch clicks outside - large invisible area */}
+      {/* Backdrop to catch clicks outside */}
       <div className="pet-detail-backdrop" onClick={onClose} onMouseDown={handleMouseDown} />
 
-      {/* Panel container - positioned absolutely relative to pet-sprite-wrapper */}
+      {/* Panel container */}
       <div className="pet-detail-panel-container" onMouseDown={handleMouseDown}>
         <div className="pet-detail-panel">
-          {/* Close button */}
-          <button className="pet-detail-close" onClick={onClose}>
-            ×
-          </button>
-
-          {/* Header with status */}
-          <div className="pet-detail-header">
-            <span className="pet-detail-status-icon">{STATUS_ICONS[state.state]}</span>
-            <span className="pet-detail-status-text">{STATUS_LABELS[state.state]}</span>
+          {/* Status row */}
+          <div className="pet-detail-row pet-detail-status">
+            <span>{STATUS_ICONS[state.state]}</span>
+            <span>{STATUS_LABELS[state.state]}</span>
           </div>
 
-          {/* Project info */}
-          {projectName && (
-            <div className="pet-detail-section">
-              <div className="pet-detail-label">Project</div>
-              <div className="pet-detail-value">
-                <span className="pet-detail-icon">📁</span> {projectName}
-              </div>
+          {/* Project & branch row */}
+          {(projectName || state.gitBranch) && (
+            <div className="pet-detail-row pet-detail-context">
+              {projectName && <span>📁 {projectName}</span>}
+              {projectName && state.gitBranch && <span className="pet-detail-sep">·</span>}
+              {state.gitBranch && <span>🌿 {state.gitBranch}</span>}
             </div>
           )}
 
-          {/* Git branch */}
-          {state.gitBranch && (
-            <div className="pet-detail-section">
-              <div className="pet-detail-label">Branch</div>
-              <div className="pet-detail-value">
-                <span className="pet-detail-icon">🌿</span> {state.gitBranch}
-              </div>
-            </div>
-          )}
-
-          {/* Current tool */}
+          {/* Tool row - only when working */}
           {state.state === 'working' && state.toolName && (
-            <div className="pet-detail-section">
-              <div className="pet-detail-label">Current Tool</div>
-              <div className="pet-detail-value">
-                <span className="pet-detail-icon">🔧</span> {state.toolName}
-                {duration && <span className="pet-detail-duration">({duration})</span>}
-              </div>
+            <div className="pet-detail-row pet-detail-tool">
+              <span>🔧 {state.toolName}</span>
+              {duration && <span className="pet-detail-duration">{duration}</span>}
             </div>
           )}
 
-          {/* Error message */}
+          {/* Error row */}
           {state.state === 'error' && state.errorMessage && (
-            <div className="pet-detail-section pet-detail-error">
-              <div className="pet-detail-label">Error</div>
-              <div className="pet-detail-value pet-detail-error-text">
-                {state.errorMessage}
-              </div>
+            <div className="pet-detail-row pet-detail-error">
+              {state.errorMessage}
             </div>
           )}
 
-          {/* Active sessions count */}
+          {/* Sessions count - only when multiple */}
           {state.activeSessionCount && state.activeSessionCount > 1 && (
-            <div className="pet-detail-section">
-              <div className="pet-detail-label">Sessions</div>
-              <div className="pet-detail-value">
-                <span className="pet-detail-icon">📊</span> {state.activeSessionCount} active
-              </div>
+            <div className="pet-detail-row pet-detail-sessions">
+              +{state.activeSessionCount - 1} more session{state.activeSessionCount > 2 ? 's' : ''}
             </div>
           )}
-
-          {/* Hint */}
-          <div className="pet-detail-hint">
-            Click anywhere to close
-          </div>
         </div>
       </div>
     </>

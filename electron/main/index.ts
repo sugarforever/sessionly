@@ -6,7 +6,7 @@ import { setupIPC } from './ipc-handlers'
 import { createSystemTray } from './system-tray'
 import { initAutoUpdater, setupAutoUpdaterIPC } from './auto-updater'
 import { getSessionMonitor } from './services/session-monitor'
-import { createPetWindow, setupPetIPC, destroyPetWindow, getPetSettings } from './pet-window'
+import { createPetWindow, setupPetIPC, destroyPetWindow, getPetSettings, shouldSuppressMainWindowActivation } from './pet-window'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 
@@ -114,6 +114,10 @@ app.whenReady().then(() => {
   }
 
   app.on('activate', () => {
+    // Don't show main window if user is interacting with the pet
+    if (shouldSuppressMainWindowActivation()) {
+      return
+    }
     if (BrowserWindow.getAllWindows().length === 0) {
       createWindow()
     } else {

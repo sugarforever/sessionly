@@ -49,10 +49,9 @@ export const PET_SIZE_PIXELS: Record<PetSettings['size'], number> = {
 }
 
 // Detail panel dimensions (positioned to side of pet)
-export const PET_PANEL_WIDTH = 220
+export const PET_PANEL_WIDTH = 250 // Max expected width for auto-sizing panel
 export const PET_PANEL_GAP = 8
-export const PET_PANEL_HEIGHT = 250 // Approximate max height of detail panel
+export const PET_PANEL_HEIGHT = 120 // Compact panel max height
 
 // Window needs to fit pet + panel side by side
-// Height must accommodate the panel which is taller than the pet
 export const PET_WINDOW_PADDING = 16

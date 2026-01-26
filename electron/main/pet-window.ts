@@ -30,6 +30,34 @@ let stateChangeHandler: ((state: PetStateInfo) => void) | null = null
 let completedHandler: ((state: PetStateInfo) => void) | null = null
 let errorHandler: ((state: PetStateInfo) => void) | null = null
 
+// Flag to suppress main window activation during pet interactions
+let suppressMainWindowActivation = false
+let suppressTimeout: ReturnType<typeof setTimeout> | null = null
+
+/**
+ * Check if main window activation should be suppressed (pet is being interacted with)
+ */
+export function shouldSuppressMainWindowActivation(): boolean {
+  return suppressMainWindowActivation
+}
+
+/**
+ * Set suppression flag with auto-reset timeout
+ */
+function setSuppressActivation(value: boolean): void {
+  if (suppressTimeout) {
+    clearTimeout(suppressTimeout)
+    suppressTimeout = null
+  }
+  suppressMainWindowActivation = value
+  if (value) {
+    // Auto-reset after 500ms in case mouseLeave isn't triggered
+    suppressTimeout = setTimeout(() => {
+      suppressMainWindowActivation = false
+    }, 500)
+  }
+}
+
 // 'left' means panel appears to the left of pet (pet is on right side of screen)
 // 'right' means panel appears to the right of pet (pet is on left side of screen)
 type PanelSide = 'left' | 'right'
@@ -326,6 +354,7 @@ export function setupPetIPC(): void {
   ipcMain.on('pet:mouseEnter', () => {
     if (petWindow) {
       petWindow.setIgnoreMouseEvents(false)
+      setSuppressActivation(true)
     }
   })
 
@@ -334,6 +363,7 @@ export function setupPetIPC(): void {
     if (petWindow && !isDragging) {
       petWindow.setIgnoreMouseEvents(true, { forward: true })
     }
+    setSuppressActivation(false)
   })
 
   // Start dragging - enable mouse events
