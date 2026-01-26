@@ -443,10 +443,10 @@ html, body {
 }
 
 /* ============================================================================
-   Detail Panel - Full info on click
+   Detail Panel - Minimalist info on click
    ============================================================================ */
 
-/* Backdrop is invisible but catches clicks outside the panel */
+/* Backdrop catches clicks outside */
 .pet-detail-backdrop {
   position: fixed;
   top: -100vh;
@@ -454,171 +454,116 @@ html, body {
   width: 300vw;
   height: 300vh;
   z-index: 1000;
-  /* Transparent - just for click catching */
 }
 
-/* Panel container - absolutely positioned relative to pet */
+/* Panel container - positioned relative to pet */
 .pet-detail-panel-container {
   position: absolute;
   z-index: 1001;
-  /* Position will be set by panel-left/panel-right classes */
 }
 
-/* Panel on left side of pet */
+/* Panel on left side of pet - align to bottom */
 .pet-panel-left .pet-detail-panel-container {
   right: 100%;
-  top: 50%;
-  transform: translateY(-50%);
+  bottom: 0;
   margin-right: 8px;
 }
 
-/* Panel on right side of pet */
+/* Panel on right side of pet - align to bottom */
 .pet-panel-right .pet-detail-panel-container {
   left: 100%;
-  top: 50%;
-  transform: translateY(-50%);
+  bottom: 0;
   margin-left: 8px;
 }
 
 .pet-detail-panel {
-  padding: 10px 12px;
+  padding: 8px 10px;
   background-color: #ffffff;
   color: #1a1a1a;
-  border-radius: 10px;
+  border-radius: 8px;
   border: 1px solid #e5e7eb;
   font-size: 11px;
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-  width: 200px;
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
+  min-width: 100px;
+  width: max-content;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
   animation: panel-appear 0.15s ease-out;
 }
 
 @keyframes panel-appear {
-  from {
-    opacity: 0;
-    transform: scale(0.95);
-  }
-  to {
-    opacity: 1;
-    transform: scale(1);
-  }
+  from { opacity: 0; transform: scale(0.95); }
+  to { opacity: 1; transform: scale(1); }
 }
 
-.pet-detail-close {
-  position: absolute;
-  top: 8px;
-  right: 8px;
-  width: 20px;
-  height: 20px;
-  border: none;
-  background: #f3f4f6;
-  color: #6b7280;
-  border-radius: 50%;
-  font-size: 14px;
-  line-height: 1;
-  cursor: pointer;
+/* Row-based layout */
+.pet-detail-row {
   display: flex;
   align-items: center;
-  justify-content: center;
-  transition: background-color 0.2s, color 0.2s;
+  gap: 6px;
+  white-space: nowrap;
 }
 
-.pet-detail-close:hover {
-  background: #e5e7eb;
-  color: #1f2937;
+.pet-detail-row + .pet-detail-row {
+  margin-top: 4px;
 }
 
-.pet-detail-header {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding-bottom: 10px;
-  margin-bottom: 10px;
-  border-bottom: 1px solid #e5e7eb;
-}
-
-.pet-detail-status-icon {
-  font-size: 18px;
-}
-
-.pet-detail-status-text {
+/* Status row */
+.pet-detail-status {
   font-weight: 600;
-  font-size: 13px;
+  font-size: 12px;
+  flex-shrink: 0;
 }
 
-.pet-detail-section {
-  margin-bottom: 8px;
+/* Context row (project & branch) */
+.pet-detail-context {
+  font-size: 11px;
+  color: #4b5563;
 }
 
-.pet-detail-section:last-of-type {
-  margin-bottom: 0;
-}
-
-.pet-detail-label {
-  font-size: 10px;
+.pet-detail-sep {
   color: #9ca3af;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-  margin-bottom: 2px;
 }
 
-.pet-detail-value {
-  font-size: 12px;
-  color: #374151;
-  display: flex;
-  align-items: center;
-  gap: 4px;
-}
-
-.pet-detail-icon {
-  font-size: 12px;
+/* Tool row */
+.pet-detail-tool {
+  font-size: 11px;
+  color: #4b5563;
 }
 
 .pet-detail-duration {
   color: #9ca3af;
   font-size: 10px;
-  margin-left: 4px;
+  margin-left: auto;
 }
 
+/* Error row */
 .pet-detail-error {
-  background: #fef2f2;
-  padding: 8px;
-  border-radius: 6px;
-  margin: 8px -8px;
-}
-
-.pet-detail-error .pet-detail-label {
+  font-size: 10px;
   color: #dc2626;
-}
-
-.pet-detail-error-text {
-  color: #dc2626;
-  font-size: 11px;
+  max-width: 180px;
+  white-space: normal;
   word-break: break-word;
 }
 
-.pet-detail-hint {
-  margin-top: 10px;
-  padding-top: 8px;
-  border-top: 1px solid #e5e7eb;
+/* Sessions count */
+.pet-detail-sessions {
   font-size: 10px;
   color: #9ca3af;
-  text-align: center;
 }
 
-/* State-specific panel header colors */
+/* State-specific left border */
 .pet-state-idle .pet-detail-panel {
-  border-top: 3px solid #9ca3af;
+  border-left: 3px solid #9ca3af;
 }
 
 .pet-state-working .pet-detail-panel {
-  border-top: 3px solid #3b82f6;
+  border-left: 3px solid #3b82f6;
 }
 
 .pet-state-completed .pet-detail-panel {
-  border-top: 3px solid #22c55e;
+  border-left: 3px solid #22c55e;
 }
 
 .pet-state-error .pet-detail-panel {
-  border-top: 3px solid #ef4444;
+  border-left: 3px solid #ef4444;
 }
