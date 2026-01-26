@@ -10,8 +10,9 @@ import * as fs from 'node:fs'
 import * as path from 'node:path'
 import * as os from 'node:os'
 import type { PetState, PetStateInfo } from '../../shared/pet-types'
-import type { RawJSONLEntry, RawAssistantMessage, RawUserMessage } from '../../shared/session-types'
-import { isAssistantMessage, isToolResultBlock } from '../../shared/session-types'
+import type { RawJSONLEntry, RawAssistantMessage, RawUserMessage, ContentBlock, ToolResultBlock } from '../../shared/session-types'
+import { isAssistantMessage, isUserMessage, isToolResultBlock, isToolUseBlock } from '../../shared/session-types'
+import { petLogger } from './pet-logger'
 
 const IDLE_TIMEOUT_MS = 30000 // 30 seconds
 const SESSION_STALE_MS = 60000 // 1 minute - consider session stale after this
@@ -26,11 +27,21 @@ const STATE_PRIORITY: Record<PetState, number> = {
   error: 3,
 }
 
+interface SessionContext {
+  state: PetState
+  toolName?: string | null
+  errorMessage?: string | null
+  gitBranch?: string | null
+}
+
 interface SessionActivity {
   state: PetState
   project: string | null
   sessionId: string | null
   timestamp: number
+  toolName?: string | null
+  errorMessage?: string | null
+  gitBranch?: string | null
 }
 
 interface TrackedSession {
@@ -39,19 +50,34 @@ interface TrackedSession {
   sessionId: string
   lastUpdate: number
   filePath: string
+  toolName?: string | null
+  errorMessage?: string | null
+  gitBranch?: string | null
 }
+
+// Follow-up check delay to detect working → completed/idle transitions
+const FOLLOW_UP_CHECK_MS = 5000
+// Maximum follow-up checks before considering a session stale (5s * 6 = 30s max wait)
+const MAX_FOLLOW_UP_CHECKS = 6
 
 export class SessionMonitor extends EventEmitter {
   private projectsDir: string
   private watcher: fs.FSWatcher | null = null
   private debounceTimers: Map<string, ReturnType<typeof setTimeout>> = new Map()
+  private followUpTimers: Map<string, ReturnType<typeof setTimeout>> = new Map()
+  private followUpCounts: Map<string, number> = new Map() // Track follow-up attempts per file
   private idleTimer: ReturnType<typeof setTimeout> | null = null
   private activeSessions: Map<string, TrackedSession> = new Map()
+  // Track previous state per session to detect actual transitions (not display switches)
+  private sessionPreviousStates: Map<string, PetState> = new Map()
   private lastEmittedState: SessionActivity = {
     state: 'idle',
     project: null,
     sessionId: null,
     timestamp: Date.now(),
+    toolName: null,
+    errorMessage: null,
+    gitBranch: null,
   }
   private isRunning = false
 
@@ -70,7 +96,7 @@ export class SessionMonitor extends EventEmitter {
 
     // Check if projects directory exists
     if (!fs.existsSync(this.projectsDir)) {
-      console.log('Claude projects directory not found, pet will stay idle')
+      petLogger.warn('Claude projects directory not found, pet will stay idle')
       this.emitState('idle', null, null)
       return
     }
@@ -86,7 +112,7 @@ export class SessionMonitor extends EventEmitter {
       )
 
       this.watcher.on('error', (error) => {
-        console.error('Session monitor watcher error:', error)
+        petLogger.error('Session monitor watcher error', error as Error)
       })
 
       // Start idle timer
@@ -95,9 +121,9 @@ export class SessionMonitor extends EventEmitter {
       // Initial scan to find current state
       this.scanForActivity()
 
-      console.log('Session monitor started')
+      petLogger.startup(this.projectsDir)
     } catch (error) {
-      console.error('Failed to start session monitor:', error)
+      petLogger.error('Failed to start session monitor', error as Error)
     }
   }
 
@@ -122,6 +148,13 @@ export class SessionMonitor extends EventEmitter {
     }
     this.debounceTimers.clear()
 
+    // Clear all follow-up timers and counts
+    for (const timer of this.followUpTimers.values()) {
+      clearTimeout(timer)
+    }
+    this.followUpTimers.clear()
+    this.followUpCounts.clear()
+
     if (this.idleTimer) {
       clearTimeout(this.idleTimer)
       this.idleTimer = null
@@ -129,7 +162,7 @@ export class SessionMonitor extends EventEmitter {
 
     this.activeSessions.clear()
 
-    console.log('Session monitor stopped')
+    petLogger.shutdown()
   }
 
   /**
@@ -141,6 +174,10 @@ export class SessionMonitor extends EventEmitter {
       sessionId: this.lastEmittedState.sessionId,
       project: this.lastEmittedState.project,
       lastActivity: this.lastEmittedState.timestamp,
+      gitBranch: this.lastEmittedState.gitBranch,
+      toolName: this.lastEmittedState.toolName,
+      errorMessage: this.lastEmittedState.errorMessage,
+      activeSessionCount: this.activeSessions.size,
     }
   }
 
@@ -215,7 +252,7 @@ export class SessionMonitor extends EventEmitter {
         this.emitState('idle', null, null)
       }
     } catch (error) {
-      console.error('Failed to scan for activity:', error)
+      petLogger.error('Failed to scan for activity', error as Error)
     }
   }
 
@@ -241,8 +278,20 @@ export class SessionMonitor extends EventEmitter {
         const content = buffer.toString('utf-8')
         const lines = content.split('\n').filter((line) => line.trim())
 
-        // Parse last few lines to determine state
-        const state = this.determineStateFromLines(lines)
+        // Check if file was recently modified (within last 3 seconds)
+        const isRecentlyModified = Date.now() - stats.mtimeMs < 3000
+
+        // Reset follow-up count if there's actual new file activity
+        // This prevents the stale timeout from triggering when the session is genuinely active
+        if (isRecentlyModified) {
+          this.followUpCounts.delete(filePath)
+        }
+
+        // Parse last few lines to determine state and extract context
+        const context = this.determineStateFromLines(lines, isRecentlyModified, filePath)
+
+        // Extract git branch from the most recent message with gitBranch
+        const gitBranch = this.extractGitBranch(lines)
 
         // Extract project from path
         const pathParts = filePath.split(path.sep)
@@ -255,17 +304,67 @@ export class SessionMonitor extends EventEmitter {
         const sessionId = path.basename(filePath, '.jsonl')
 
         if (project && sessionId) {
+          // Get previous state for this specific session
+          const prevSessionState = this.sessionPreviousStates.get(filePath)
+
           // Update tracked session
           this.activeSessions.set(filePath, {
-            state,
+            state: context.state,
             project,
             sessionId,
             lastUpdate: Date.now(),
             filePath,
+            toolName: context.toolName,
+            errorMessage: context.errorMessage,
+            gitBranch: gitBranch || context.gitBranch,
           })
 
-          // Compute and emit aggregate state
+          // Update previous state tracking
+          this.sessionPreviousStates.set(filePath, context.state)
+
+          // Emit session-specific events for notifications
+          // Only notify when THIS SESSION transitions to completed/error
+          if (prevSessionState && prevSessionState !== context.state) {
+            const sessionInfo: PetStateInfo = {
+              state: context.state,
+              sessionId,
+              project,
+              lastActivity: Date.now(),
+              toolName: context.toolName,
+              errorMessage: context.errorMessage,
+              gitBranch: gitBranch || context.gitBranch,
+              activeSessionCount: this.activeSessions.size,
+            }
+
+            // Log the state transition
+            petLogger.stateChange({
+              sessionId,
+              project,
+              previousState: prevSessionState,
+              newState: context.state,
+              reason: `Session file analysis (recently modified: ${Date.now() - stats.mtimeMs < 3000})`,
+              toolName: context.toolName,
+              errorMessage: context.errorMessage,
+              activeSessionCount: this.activeSessions.size,
+            })
+
+            if (context.state === 'completed' && prevSessionState === 'working') {
+              this.emit('completed', sessionInfo)
+            } else if (context.state === 'error') {
+              this.emit('error', sessionInfo)
+            }
+          }
+
+          // Compute and emit aggregate state for display
           this.computeAndEmitState()
+
+          // If state is "working", schedule a follow-up check to detect completion
+          if (context.state === 'working') {
+            this.scheduleFollowUpCheck(filePath)
+          } else {
+            // Clear any pending follow-up for this file
+            this.clearFollowUpCheck(filePath)
+          }
         }
 
         this.resetIdleTimer()
@@ -274,7 +373,7 @@ export class SessionMonitor extends EventEmitter {
       }
     } catch (error) {
       // File might be temporarily unavailable
-      console.debug('Failed to analyze session file:', error)
+      petLogger.debug(`Failed to analyze session file: ${filePath.split('/').pop()}`)
     }
   }
 
@@ -318,34 +417,137 @@ export class SessionMonitor extends EventEmitter {
     }
 
     if (selectedSession) {
-      this.emitState(selectedSession.state, selectedSession.project, selectedSession.sessionId)
+      this.emitState(
+        selectedSession.state,
+        selectedSession.project,
+        selectedSession.sessionId,
+        selectedSession.toolName,
+        selectedSession.errorMessage,
+        selectedSession.gitBranch
+      )
     }
   }
 
-  private determineStateFromLines(lines: string[]): PetState {
+  private determineStateFromLines(lines: string[], isRecentlyModified: boolean = true, filePath?: string): SessionContext {
+    // Claude Code NEVER writes stop_reason: "end_turn" to JSONL files
+    // All entries have stop_reason: null
+    // We need to detect state based on:
+    // 1. Entry type (assistant vs user)
+    // 2. Content type (text vs tool_use vs tool_result)
+    // 3. File modification recency
+
+    // Helper to log detection and return result
+    const logAndReturn = (state: PetState, reason: string, contentTypes: string[], lastEntryType: string, context: Omit<SessionContext, 'state'> = {}): SessionContext => {
+      petLogger.detection({
+        filePath: filePath || 'unknown',
+        isRecentlyModified,
+        lastEntryType,
+        contentTypes,
+        determinedState: state,
+        reason,
+      })
+      return { state, ...context }
+    }
+
     // Look at lines in reverse order to find the most recent relevant entry
     for (let i = lines.length - 1; i >= 0; i--) {
       try {
-        // Try to parse as JSON - line might be partial from file read
         const entry = JSON.parse(lines[i]) as RawJSONLEntry
 
         // Check for tool result with error
-        if (this.hasToolError(entry)) {
-          return 'error'
+        const errorInfo = this.getToolError(entry)
+        if (errorInfo) {
+          return logAndReturn('error', `Tool error: ${errorInfo.message}`, ['tool_result'], 'user', {
+            errorMessage: errorInfo.message,
+            toolName: errorInfo.toolName,
+          })
         }
 
-        // Check assistant messages for stop_reason
+        // Check assistant messages
         if (isAssistantMessage(entry)) {
           const assistant = entry as RawAssistantMessage
-          const stopReason = assistant.message.stop_reason
+          const content = assistant.message.content
 
-          if (stopReason === 'end_turn') {
-            return 'completed'
+          // Extract content types for logging
+          const contentTypes = Array.isArray(content)
+            ? content.map(b => b.type)
+            : ['string']
+
+          // Determine what type of content the assistant message has
+          const hasToolUse = Array.isArray(content) && content.some(block => isToolUseBlock(block))
+          const hasTextOnly = Array.isArray(content) && content.length > 0 &&
+            content.every(block => block.type === 'text' || block.type === 'thinking')
+          const toolName = this.extractCurrentTool(content)
+          const rawToolName = this.getRawToolName(content)
+
+          // Check if the tool is one that waits for USER input (not system execution)
+          const userInputTools = ['AskUserQuestion', 'AskUser']
+          const isWaitingForUserInput = hasToolUse && rawToolName &&
+            userInputTools.includes(rawToolName)
+
+          // If Claude is asking for user input, that's "completed" (needs user response)
+          if (isWaitingForUserInput) {
+            return logAndReturn('completed', `Waiting for user input (${rawToolName})`, contentTypes, 'assistant', {
+              toolName,
+              gitBranch: assistant.gitBranch,
+            })
           }
 
-          // No stop_reason means still working
-          if (!stopReason) {
-            return 'working'
+          // If assistant message has tool_use, Claude is working (waiting for tool result)
+          if (hasToolUse) {
+            return logAndReturn('working', `Tool in progress: ${rawToolName}`, contentTypes, 'assistant', {
+              toolName,
+              gitBranch: assistant.gitBranch,
+            })
+          }
+
+          // If assistant message has only text/thinking (no tool_use)
+          if (hasTextOnly) {
+            if (isRecentlyModified) {
+              // Still being written - working
+              return logAndReturn('working', 'Text response being written (file recently modified)', contentTypes, 'assistant', {
+                toolName: null,
+                gitBranch: assistant.gitBranch,
+              })
+            } else {
+              // Text message, not recently modified - Claude finished talking
+              return logAndReturn('completed', 'Text response complete (file stale)', contentTypes, 'assistant', {
+                gitBranch: assistant.gitBranch,
+              })
+            }
+          }
+
+          // Fallback: if recent file activity, assume working
+          if (isRecentlyModified) {
+            return logAndReturn('working', 'Fallback: file recently modified', contentTypes, 'assistant', {
+              toolName,
+              gitBranch: assistant.gitBranch,
+            })
+          }
+        }
+
+        // User message (usually tool_result) - check recency
+        if (isUserMessage(entry)) {
+          const userMsg = entry as RawUserMessage
+          const contentTypes = Array.isArray(userMsg.message?.content)
+            ? userMsg.message.content.map(b => b.type)
+            : ['text']
+
+          const hasToolResult = contentTypes.includes('tool_result')
+
+          if (isRecentlyModified) {
+            // Tool result just sent, Claude will respond - working
+            return logAndReturn('working', 'Tool result sent, awaiting Claude response', contentTypes, 'user')
+          } else if (hasToolResult) {
+            // Tool result sent, file is stale - but might be waiting for permission on another tool
+            // When Claude sends multiple tool_use blocks in parallel, some may complete while
+            // others are waiting for permission. Show "completed" to prompt user to check.
+            return logAndReturn('completed', 'Tool completed, may need input for other tools', contentTypes, 'user', {
+              toolName: 'May need your input',
+            })
+          } else {
+            // User typed a message but Claude hasn't responded and file is stale - idle
+            return logAndReturn('idle', 'User message but file stale', contentTypes, 'user')
           }
         }
       } catch {
@@ -355,26 +557,281 @@ export class SessionMonitor extends EventEmitter {
     }
 
     // Default to idle if we can't determine state
-    return 'idle'
+    return logAndReturn('idle', 'No relevant entries found', [], 'none')
   }
 
-  private hasToolError(entry: RawJSONLEntry): boolean {
-    if (entry.type !== 'user') return false
+  /**
+   * Schedule a follow-up check for a working session
+   * This detects when a session transitions from working to completed/idle
+   * Limited to MAX_FOLLOW_UP_CHECKS to prevent infinite loops
+   */
+  private scheduleFollowUpCheck(filePath: string): void {
+    // Check if we've exceeded the maximum follow-up attempts
+    const currentCount = this.followUpCounts.get(filePath) || 0
+    if (currentCount >= MAX_FOLLOW_UP_CHECKS) {
+      petLogger.debug(`Max follow-ups reached for: ${filePath.split('/').pop()?.slice(0, 8)}... (${currentCount}/${MAX_FOLLOW_UP_CHECKS})`)
+      // Mark session as stale/idle since it's been waiting too long
+      this.handleStaleWorkingSession(filePath)
+      return
+    }
+
+    // Clear any existing follow-up timer (but preserve count)
+    const existingTimer = this.followUpTimers.get(filePath)
+    if (existingTimer) {
+      clearTimeout(existingTimer)
+    }
+
+    // Increment follow-up count
+    this.followUpCounts.set(filePath, currentCount + 1)
+
+    const timer = setTimeout(() => {
+      this.followUpTimers.delete(filePath)
+      const count = this.followUpCounts.get(filePath) || 0
+      petLogger.debug(`Follow-up check for: ${filePath.split('/').pop()?.slice(0, 8)}... (${count}/${MAX_FOLLOW_UP_CHECKS})`)
+      // Re-analyze the file to detect state change
+      this.analyzeSessionFile(filePath)
+    }, FOLLOW_UP_CHECK_MS)
+
+    this.followUpTimers.set(filePath, timer)
+  }
+
+  /**
+   * Handle a working session that has exceeded max follow-up checks
+   *
+   * If the session has an unresolved tool_use (toolName is set), this likely means
+   * the CLI is waiting for user input (e.g., permission prompt). In this case,
+   * transition to "completed" (waiting for user) instead of "idle".
+   *
+   * If there's no tool_use, the session was probably abandoned, so go to "idle".
+   */
+  private handleStaleWorkingSession(filePath: string): void {
+    const session = this.activeSessions.get(filePath)
+    if (!session) return
+
+    const prevState = session.state
+    const hasUnresolvedTool = !!session.toolName
+
+    // If there's an unresolved tool_use, likely waiting for user input (permission prompt)
+    // Transition to "completed" instead of "idle"
+    if (hasUnresolvedTool) {
+      petLogger.info(`Session waiting for input after ${MAX_FOLLOW_UP_CHECKS} follow-ups: ${session.project}`)
+
+      session.state = 'completed'
+      session.toolName = 'Waiting for your input'
+      this.activeSessions.set(filePath, session)
+      this.sessionPreviousStates.set(filePath, 'completed')
+
+      // Log the transition
+      petLogger.stateChange({
+        sessionId: session.sessionId,
+        project: session.project,
+        previousState: prevState,
+        newState: 'completed',
+        reason: `Likely waiting for permission or input (unresolved tool_use after ${MAX_FOLLOW_UP_CHECKS * FOLLOW_UP_CHECK_MS / 1000}s)`,
+        toolName: 'Waiting for your input',
+        errorMessage: null,
+        activeSessionCount: this.activeSessions.size,
+      })
+
+      // Emit completed event for notification
+      const sessionInfo: PetStateInfo = {
+        state: 'completed',
+        sessionId: session.sessionId,
+        project: session.project,
+        lastActivity: Date.now(),
+        toolName: 'Waiting for your input',
+        errorMessage: null,
+        gitBranch: session.gitBranch,
+        activeSessionCount: this.activeSessions.size,
+      }
+      this.emit('completed', sessionInfo)
+    } else {
+      // No tool_use, session was probably abandoned
+      petLogger.warn(`Session stale after ${MAX_FOLLOW_UP_CHECKS} follow-ups: ${session.project}`)
+
+      session.state = 'idle'
+      session.toolName = null
+      this.activeSessions.set(filePath, session)
+      this.sessionPreviousStates.set(filePath, 'idle')
+
+      // Log the forced transition
+      petLogger.stateChange({
+        sessionId: session.sessionId,
+        project: session.project,
+        previousState: prevState,
+        newState: 'idle',
+        reason: `Forced idle after ${MAX_FOLLOW_UP_CHECKS * FOLLOW_UP_CHECK_MS / 1000}s of no activity`,
+        toolName: null,
+        errorMessage: null,
+        activeSessionCount: this.activeSessions.size,
+      })
+    }
+
+    // Clear follow-up tracking
+    this.clearFollowUpCheck(filePath)
+
+    // Recompute aggregate state
+    this.computeAndEmitState()
+  }
+
+  /**
+   * Clear a pending follow-up check and reset count
+   */
+  private clearFollowUpCheck(filePath: string): void {
+    const existingTimer = this.followUpTimers.get(filePath)
+    if (existingTimer) {
+      clearTimeout(existingTimer)
+      this.followUpTimers.delete(filePath)
+    }
+    // Reset follow-up count when clearing (session got new activity)
+    this.followUpCounts.delete(filePath)
+  }
+
+  /**
+   * Check for tool errors and extract error details
+   */
+  private getToolError(entry: RawJSONLEntry): { message: string; toolName?: string } | null {
+    if (entry.type !== 'user') return null
 
     const userMessage = entry as RawUserMessage
     const content = userMessage.message?.content
-    if (!Array.isArray(content)) return false
+    if (!Array.isArray(content)) return null
 
-    return content.some((block) => isToolResultBlock(block) && block.is_error === true)
+    for (const block of content) {
+      if (isToolResultBlock(block) && block.is_error === true) {
+        const errorMessage = this.extractErrorMessage(block)
+        return {
+          message: errorMessage,
+          toolName: undefined, // Tool name not available in result block
+        }
+      }
+    }
+
+    return null
   }
 
-  private emitState(state: PetState, project: string | null, sessionId: string | null): void {
+  /**
+   * Extract a concise error message from a tool result block
+   */
+  private extractErrorMessage(block: ToolResultBlock): string {
+    const content = block.content
+    if (typeof content === 'string') {
+      // Truncate long error messages
+      const firstLine = content.split('\n')[0]
+      return firstLine.length > 60 ? firstLine.substring(0, 57) + '...' : firstLine
+    }
+    if (Array.isArray(content)) {
+      for (const item of content) {
+        if (item.type === 'text') {
+          const firstLine = item.text.split('\n')[0]
+          return firstLine.length > 60 ? firstLine.substring(0, 57) + '...' : firstLine
+        }
+      }
+    }
+    return 'An error occurred'
+  }
+
+  /**
+   * Extract the current tool being used from message content
+   */
+  private extractCurrentTool(content: string | ContentBlock[]): string | null {
+    if (typeof content === 'string') return null
+    if (!Array.isArray(content)) return null
+
+    // Look for the last tool_use block
+    for (let i = content.length - 1; i >= 0; i--) {
+      const block = content[i]
+      if (isToolUseBlock(block)) {
+        return this.formatToolName(block.name)
+      }
+    }
+    return null
+  }
+
+  /**
+   * Format tool name for display (convert camelCase/snake_case to readable)
+   */
+  private formatToolName(name: string): string {
+    // Map common tool names to friendly names
+    const toolNameMap: Record<string, string> = {
+      'Read': 'Reading file',
+      'Write': 'Writing file',
+      'Edit': 'Editing file',
+      'Bash': 'Running command',
+      'Glob': 'Searching files',
+      'Grep': 'Searching code',
+      'Task': 'Running agent',
+      'WebFetch': 'Fetching URL',
+      'WebSearch': 'Searching web',
+      'TodoWrite': 'Updating todos',
+      'NotebookEdit': 'Editing notebook',
+      'AskUserQuestion': 'Waiting for your answer',
+      'AskUser': 'Waiting for your answer',
+    }
+    return toolNameMap[name] || name
+  }
+
+  /**
+   * Get the raw tool name from content (not formatted)
+   */
+  private getRawToolName(content: string | ContentBlock[]): string | null {
+    if (typeof content === 'string') return null
+    if (!Array.isArray(content)) return null
+
+    for (let i = content.length - 1; i >= 0; i--) {
+      const block = content[i]
+      if (isToolUseBlock(block)) {
+        return block.name
+      }
+    }
+    return null
+  }
+
+  /**
+   * Extract git branch from recent JSONL lines
+   */
+  private extractGitBranch(lines: string[]): string | null {
+    // Look through lines in reverse to find the most recent git branch
+    for (let i = lines.length - 1; i >= 0; i--) {
+      try {
+        const entry = JSON.parse(lines[i]) as RawJSONLEntry
+        if (isUserMessage(entry) && entry.gitBranch) {
+          return entry.gitBranch
+        }
+        if (isAssistantMessage(entry) && entry.gitBranch) {
+          return entry.gitBranch
+        }
+      } catch {
+        continue
+      }
+    }
+    return null
+  }
+
+  private emitState(
+    state: PetState,
+    project: string | null,
+    sessionId: string | null,
+    toolName?: string | null,
+    errorMessage?: string | null,
+    gitBranch?: string | null
+  ): void {
     const prevState = this.lastEmittedState.state
     const prevProject = this.lastEmittedState.project
     const prevSessionId = this.lastEmittedState.sessionId
+    const prevToolName = this.lastEmittedState.toolName
+    const prevErrorMessage = this.lastEmittedState.errorMessage
+    const prevGitBranch = this.lastEmittedState.gitBranch
 
-    // Skip if state hasn't changed
-    if (state === prevState && project === prevProject && sessionId === prevSessionId) {
+    // Skip if nothing has changed
+    if (
+      state === prevState &&
+      project === prevProject &&
+      sessionId === prevSessionId &&
+      toolName === prevToolName &&
+      errorMessage === prevErrorMessage &&
+      gitBranch === prevGitBranch
+    ) {
       return
     }
 
@@ -383,6 +840,9 @@ export class SessionMonitor extends EventEmitter {
       project,
       sessionId,
       timestamp: Date.now(),
+      toolName,
+      errorMessage,
+      gitBranch,
     }
 
     const stateInfo: PetStateInfo = {
@@ -390,18 +850,31 @@ export class SessionMonitor extends EventEmitter {
       sessionId,
       project,
       lastActivity: this.lastEmittedState.timestamp,
+      toolName,
+      errorMessage,
+      gitBranch,
+      activeSessionCount: this.activeSessions.size,
     }
 
+    // Log aggregate state change (different from per-session transitions)
+    if (prevState !== state || prevProject !== project) {
+      petLogger.stateChange({
+        sessionId: sessionId || 'none',
+        project,
+        previousState: prevState,
+        newState: state,
+        reason: 'Aggregate state updated (highest priority session)',
+        toolName,
+        errorMessage,
+        activeSessionCount: this.activeSessions.size,
+      })
+    } else {
+      petLogger.debug(`State unchanged: ${state} (tool: ${toolName || 'none'})`)
+    }
     this.emit('stateChange', stateInfo)
 
-    // Emit specific events for notifications
-    if (state !== prevState) {
-      if (state === 'completed') {
-        this.emit('completed', stateInfo)
-      } else if (state === 'error') {
-        this.emit('error', stateInfo)
-      }
-    }
+    // Note: 'completed' and 'error' events are now emitted per-session in analyzeSessionFile
+    // to avoid duplicate notifications when switching between sessions for display
   }
 
   private resetIdleTimer(): void {
@@ -419,8 +892,35 @@ export class SessionMonitor extends EventEmitter {
     if (!encoded.startsWith('-')) {
       return encoded
     }
-    // Simple decode: replace leading dash and internal dashes with slashes
-    return encoded.replace(/-/g, '/')
+    // Claude Code encodes paths like /Users/name/github/repo as -Users-name-github-repo
+    // We want to extract just the project folder name (last component)
+    // Strategy: find common path prefixes and extract the rest as project name
+
+    // Remove leading dash and split
+    const parts = encoded.substring(1).split('-')
+
+    // Look for common path patterns: Users/xxx/github/PROJECT or Users/xxx/PROJECT
+    // Find index after 'github' or after username (3rd position typically)
+    let projectStartIndex = 0
+
+    for (let i = 0; i < parts.length; i++) {
+      if (parts[i].toLowerCase() === 'github' ||
+          parts[i].toLowerCase() === 'projects' ||
+          parts[i].toLowerCase() === 'repos' ||
+          parts[i].toLowerCase() === 'code') {
+        projectStartIndex = i + 1
+        break
+      }
+    }
+
+    // If no common folder found, try to skip Users/username (first 2 parts)
+    if (projectStartIndex === 0 && parts.length > 2) {
+      projectStartIndex = 2
+    }
+
+    // Join remaining parts with dash (preserving original folder name)
+    const projectName = parts.slice(projectStartIndex).join('-')
+    return projectName || encoded.substring(1) // Fallback to full name without leading dash
   }
 }
 

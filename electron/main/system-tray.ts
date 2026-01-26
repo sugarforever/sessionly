@@ -2,14 +2,64 @@ import { Tray, Menu, BrowserWindow, app, nativeImage } from 'electron'
 import path from 'node:path'
 import { VITE_PUBLIC } from './index'
 import {
-  isPetVisible,
   showPetWindow,
   hidePetWindow,
   getPetSettings,
   setPetSettings,
 } from './pet-window'
 import { PET_CHARACTER_NAMES } from '../shared/pet-types'
-import type { PetCharacter } from '../shared/pet-types'
+import type { PetCharacter, PetStateInfo } from '../shared/pet-types'
+
+let systemTray: Tray | null = null
+
+const STATUS_LABELS: Record<string, string> = {
+  idle: 'Idle',
+  working: 'Working',
+  completed: 'Ready for input',
+  error: 'Error',
+}
+
+/**
+ * Update the system tray tooltip with current pet state
+ */
+export function updateTrayTooltip(state: PetStateInfo): void {
+  if (!systemTray) return
+
+  const projectName = state.project
+    ? state.project.split('/').filter(Boolean).pop() ?? 'Unknown'
+    : null
+
+  let tooltip = 'Sessionly'
+
+  if (projectName) {
+    tooltip = `${projectName}`
+    if (state.gitBranch) {
+      tooltip += ` (${state.gitBranch})`
+    }
+    tooltip += `\n${STATUS_LABELS[state.state] || state.state}`
+
+    if (state.state === 'working' && state.toolName) {
+      tooltip += `: ${state.toolName}`
+    }
+
+    if (state.state === 'error' && state.errorMessage) {
+      tooltip += `\n${state.errorMessage}`
+    }
+
+    if (state.activeSessionCount && state.activeSessionCount > 1) {
+      tooltip += `\n+${state.activeSessionCount - 1} more session(s)`
+    }
+  }
+
+  systemTray.setToolTip(tooltip)
+}
+
+/**
+ * Get the system tray instance
+ */
+export function getSystemTray(): Tray | null {
+  return systemTray
+}
 
 export function createSystemTray(mainWindow: BrowserWindow | null): Tray {
   // Create tray icon (you should add a proper icon file in public/icons/)
@@ -38,7 +88,7 @@ export function createSystemTray(mainWindow: BrowserWindow | null): Tray {
         {
           label: 'Show Pet',
           type: 'checkbox',
-          checked: isPetVisible(),
+          checked: settings.enabled,
           click: (menuItem) => {
             if (menuItem.checked) {
               showPetWindow()
@@ -137,6 +187,9 @@ export function createSystemTray(mainWindow: BrowserWindow | null): Tray {
       }
     }
   })
+
+  // Store reference for tooltip updates
+  systemTray = tray
 
   return tray
 }

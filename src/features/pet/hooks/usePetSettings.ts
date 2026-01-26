@@ -12,6 +12,13 @@ export function usePetSettings(): PetSettings {
         setSettings(response.data)
       }
     })
+
+    // Subscribe to settings changes
+    const unsubscribe = window.electron.onPetSettingsChange((newSettings) => {
+      setSettings(newSettings)
+    })
+
+    return unsubscribe
   }, [])
 
   return settings

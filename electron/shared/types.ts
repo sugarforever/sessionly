@@ -94,6 +94,8 @@ export interface ElectronAPI {
   onUpdateError: (callback: (error: string) => void) => () => void
 
   // Pet - Floating session monitor cat
+  petMouseEnter: () => void
+  petMouseLeave: () => void
   petStartDrag: () => void
   petEndDrag: () => void
   petDragMove: (delta: { deltaX: number; deltaY: number }) => void
@@ -101,6 +103,9 @@ export interface ElectronAPI {
   petSetSettings: (settings: Partial<PetSettings>) => Promise<IpcResponse<void>>
   petGetState: () => Promise<IpcResponse<PetStateInfo>>
   onPetStateChange: (callback: (state: PetStateInfo) => void) => () => void
+  onPetSettingsChange: (callback: (settings: PetSettings) => void) => () => void
+  petGetPanelSide: () => Promise<IpcResponse<'left' | 'right'>>
+  onPetPanelSideChange: (callback: (side: 'left' | 'right') => void) => () => void
 }
 
 export type IpcChannels =
@@ -137,6 +142,7 @@ export type IpcChannels =
   | 'pet:setSettings'
   | 'pet:getState'
   | 'pet:stateChange'
+  | 'pet:settingsChange'
 
 declare global {
   interface Window {

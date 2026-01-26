@@ -1,5 +1,5 @@
 import { contextBridge, ipcRenderer } from 'electron'
-import type { ElectronAPI, UpdateInfo, UpdateProgress, PetStateInfo } from '../shared/types'
+import type { ElectronAPI, UpdateInfo, UpdateProgress, PetStateInfo, PetSettings } from '../shared/types'
 
 // Expose protected methods that allow the renderer process to use
 // ipcRenderer without exposing the entire object
@@ -123,6 +123,8 @@ const electronAPI: ElectronAPI = {
   },
 
   // Pet - Floating session monitor cat
+  petMouseEnter: () => ipcRenderer.send('pet:mouseEnter'),
+  petMouseLeave: () => ipcRenderer.send('pet:mouseLeave'),
   petStartDrag: () => ipcRenderer.send('pet:startDrag'),
   petEndDrag: () => ipcRenderer.send('pet:endDrag'),
   petDragMove: (delta) => ipcRenderer.send('pet:dragMove', delta),
@@ -135,6 +137,23 @@ const electronAPI: ElectronAPI = {
     ipcRenderer.on('pet:stateChange', subscription)
     return () => {
       ipcRenderer.removeListener('pet:stateChange', subscription)
+    }
+  },
+  onPetSettingsChange: (callback) => {
+    const subscription = (_event: Electron.IpcRendererEvent, settings: PetSettings) =>
+      callback(settings)
+    ipcRenderer.on('pet:settingsChange', subscription)
+    return () => {
+      ipcRenderer.removeListener('pet:settingsChange', subscription)
+    }
+  },
+  petGetPanelSide: () => ipcRenderer.invoke('pet:getPanelSide'),
+  onPetPanelSideChange: (callback) => {
+    const subscription = (_event: Electron.IpcRendererEvent, side: 'left' | 'right') =>
+      callback(side)
+    ipcRenderer.on('pet:panelSide', subscription)
+    return () => {
+      ipcRenderer.removeListener('pet:panelSide', subscription)
     }
   },
 }

@@ -16,15 +16,40 @@ html, body {
   background: transparent;
 }
 
-/* Base pet container */
+/* Base pet container - full width, positioned at bottom */
 .pet-container {
-  position: relative;
+  position: absolute;
+  bottom: 8px;
+  left: 0;
+  right: 0;
   cursor: grab;
-  overflow: hidden;
+  overflow: visible;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 8px;
+  padding: 0 8px;
+}
+
+/* Panel on left (pet on right side of screen) - pet sits on right of window */
+.pet-container.pet-panel-left {
+  flex-direction: row-reverse;
+}
+
+/* Panel on right (pet on left side of screen) - pet sits on left of window */
+.pet-container.pet-panel-right {
+  flex-direction: row;
 }
 
 .pet-container:active {
   cursor: grabbing;
+}
+
+/* Pet sprite wrapper - contains sprite and status indicator */
+.pet-sprite-wrapper {
+  position: relative;
+  flex-shrink: 0;
+  z-index: 1002; /* Above backdrop (999) and panel (1001) so pet stays visible */
 }
 
 /* SVG base styles */
@@ -246,10 +271,10 @@ html, body {
 
 .pet-status-indicator {
   position: absolute;
-  bottom: 5px;
-  right: 5px;
-  width: 12px;
-  height: 12px;
+  bottom: 2px;
+  right: 2px;
+  width: 10px;
+  height: 10px;
   border-radius: 50%;
   border: 2px solid white;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
@@ -272,46 +297,328 @@ html, body {
 }
 
 /* ============================================================================
-   Tooltip
+   Comic Speech Bubble
    ============================================================================ */
 
-.pet-tooltip {
-  position: absolute;
-  bottom: 100%;
-  left: 50%;
-  transform: translateX(-50%);
-  margin-bottom: 8px;
+.pet-speech-bubble {
+  position: relative;
   padding: 6px 10px;
-  background-color: rgba(0, 0, 0, 0.85);
-  color: white;
-  border-radius: 6px;
-  font-size: 12px;
-  white-space: nowrap;
+  background-color: #ffffff;
+  color: #1a1a1a;
+  border-radius: 12px;
+  border: 2px solid #1a1a1a;
+  font-size: 11px;
+  font-family: 'Comic Sans MS', 'Chalkboard SE', 'Comic Neue', cursive, sans-serif;
   pointer-events: none;
   opacity: 0;
-  transition: opacity 0.2s ease;
+  transition: opacity 0.2s ease, transform 0.2s ease;
   z-index: 1000;
+  white-space: nowrap;
+  box-shadow: 2px 2px 0 #1a1a1a;
+  transform: scale(0.9);
 }
 
-.pet-tooltip::after {
-  content: '';
-  position: absolute;
-  top: 100%;
-  left: 50%;
-  transform: translateX(-50%);
-  border: 5px solid transparent;
-  border-top-color: rgba(0, 0, 0, 0.85);
-}
-
-.pet-container:hover .pet-tooltip {
+.pet-speech-bubble.visible {
   opacity: 1;
+  transform: scale(1);
 }
 
-.pet-tooltip-project {
+/* Minimal bubble variant */
+.pet-bubble-minimal .pet-bubble-status {
+  font-size: 11px;
+  gap: 4px;
+}
+
+.pet-bubble-minimal .pet-bubble-status-icon {
+  font-size: 12px;
+}
+
+/* Comic bubble tail - hidden for side layout */
+.pet-bubble-tail {
+  display: none;
+}
+
+/* Header with project and branch */
+.pet-bubble-header {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin-bottom: 6px;
+  padding-bottom: 6px;
+  border-bottom: 2px dotted #ccc;
+}
+
+.pet-bubble-project {
+  font-weight: 700;
+  font-size: 13px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.pet-bubble-branch {
+  font-size: 11px;
+  color: #666;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Status line */
+.pet-bubble-status {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 12px;
   font-weight: 600;
 }
 
-.pet-tooltip-status {
+.pet-bubble-status-icon {
+  font-size: 14px;
+}
+
+.pet-bubble-duration {
+  color: #888;
+  font-size: 10px;
+  font-weight: 400;
+  margin-left: 2px;
+}
+
+/* Detail lines (tool name, etc.) */
+.pet-bubble-detail {
+  margin-top: 6px;
   font-size: 11px;
-  opacity: 0.8;
+  color: #555;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Error message */
+.pet-bubble-error {
+  margin-top: 6px;
+  padding: 4px 8px;
+  background-color: #fee2e2;
+  border: 1px solid #ef4444;
+  border-radius: 8px;
+  font-size: 10px;
+  color: #dc2626;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Multiple sessions indicator */
+.pet-bubble-sessions {
+  margin-top: 6px;
+  padding-top: 6px;
+  border-top: 2px dotted #ccc;
+  font-size: 10px;
+  color: #666;
+}
+
+/* State-specific bubble colors */
+.pet-state-idle .pet-speech-bubble {
+  background-color: #f3f4f6;
+  border-color: #9ca3af;
+  box-shadow: 2px 2px 0 #9ca3af;
+}
+
+.pet-state-working .pet-speech-bubble {
+  background-color: #eff6ff;
+  border-color: #3b82f6;
+  box-shadow: 2px 2px 0 #3b82f6;
+}
+
+.pet-state-completed .pet-speech-bubble {
+  background-color: #f0fdf4;
+  border-color: #22c55e;
+  box-shadow: 2px 2px 0 #22c55e;
+}
+
+.pet-state-error .pet-speech-bubble {
+  background-color: #fef2f2;
+  border-color: #ef4444;
+  box-shadow: 2px 2px 0 #ef4444;
+}
+
+/* ============================================================================
+   Detail Panel - Full info on click
+   ============================================================================ */
+
+/* Backdrop is invisible but catches clicks outside the panel */
+.pet-detail-backdrop {
+  position: fixed;
+  top: -100vh;
+  left: -100vw;
+  width: 300vw;
+  height: 300vh;
+  z-index: 1000;
+  /* Transparent - just for click catching */
+}
+
+/* Panel container - absolutely positioned relative to pet */
+.pet-detail-panel-container {
+  position: absolute;
+  z-index: 1001;
+  /* Position will be set by panel-left/panel-right classes */
+}
+
+/* Panel on left side of pet */
+.pet-panel-left .pet-detail-panel-container {
+  right: 100%;
+  top: 50%;
+  transform: translateY(-50%);
+  margin-right: 8px;
+}
+
+/* Panel on right side of pet */
+.pet-panel-right .pet-detail-panel-container {
+  left: 100%;
+  top: 50%;
+  transform: translateY(-50%);
+  margin-left: 8px;
+}
+
+.pet-detail-panel {
+  padding: 10px 12px;
+  background-color: #ffffff;
+  color: #1a1a1a;
+  border-radius: 10px;
+  border: 1px solid #e5e7eb;
+  font-size: 11px;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  width: 200px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
+  animation: panel-appear 0.15s ease-out;
+}
+
+@keyframes panel-appear {
+  from {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.pet-detail-close {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  width: 20px;
+  height: 20px;
+  border: none;
+  background: #f3f4f6;
+  color: #6b7280;
+  border-radius: 50%;
+  font-size: 14px;
+  line-height: 1;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background-color 0.2s, color 0.2s;
+}
+
+.pet-detail-close:hover {
+  background: #e5e7eb;
+  color: #1f2937;
+}
+
+.pet-detail-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding-bottom: 10px;
+  margin-bottom: 10px;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.pet-detail-status-icon {
+  font-size: 18px;
+}
+
+.pet-detail-status-text {
+  font-weight: 600;
+  font-size: 13px;
+}
+
+.pet-detail-section {
+  margin-bottom: 8px;
+}
+
+.pet-detail-section:last-of-type {
+  margin-bottom: 0;
+}
+
+.pet-detail-label {
+  font-size: 10px;
+  color: #9ca3af;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 2px;
+}
+
+.pet-detail-value {
+  font-size: 12px;
+  color: #374151;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.pet-detail-icon {
+  font-size: 12px;
+}
+
+.pet-detail-duration {
+  color: #9ca3af;
+  font-size: 10px;
+  margin-left: 4px;
+}
+
+.pet-detail-error {
+  background: #fef2f2;
+  padding: 8px;
+  border-radius: 6px;
+  margin: 8px -8px;
+}
+
+.pet-detail-error .pet-detail-label {
+  color: #dc2626;
+}
+
+.pet-detail-error-text {
+  color: #dc2626;
+  font-size: 11px;
+  word-break: break-word;
+}
+
+.pet-detail-hint {
+  margin-top: 10px;
+  padding-top: 8px;
+  border-top: 1px solid #e5e7eb;
+  font-size: 10px;
+  color: #9ca3af;
+  text-align: center;
+}
+
+/* State-specific panel header colors */
+.pet-state-idle .pet-detail-panel {
+  border-top: 3px solid #9ca3af;
+}
+
+.pet-state-working .pet-detail-panel {
+  border-top: 3px solid #3b82f6;
+}
+
+.pet-state-completed .pet-detail-panel {
+  border-top: 3px solid #22c55e;
+}
+
+.pet-state-error .pet-detail-panel {
+  border-top: 3px solid #ef4444;
 }
