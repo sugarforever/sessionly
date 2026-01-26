@@ -156,6 +156,13 @@ const electronAPI: ElectronAPI = {
       ipcRenderer.removeListener('pet:panelSide', subscription)
     }
   },
+
+  // Custom Sprites - Pet sprite sheet management
+  spritesGetAll: () => ipcRenderer.invoke('sprites:getAll'),
+  spritesGet: (id) => ipcRenderer.invoke('sprites:get', id),
+  spritesImport: (name, config) => ipcRenderer.invoke('sprites:import', { name, config }),
+  spritesUpdate: (id, updates) => ipcRenderer.invoke('sprites:update', { id, updates }),
+  spritesDelete: (id) => ipcRenderer.invoke('sprites:delete', id),
 }
 
 // Use `contextBridge` APIs to expose Electron APIs to

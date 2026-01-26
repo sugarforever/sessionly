@@ -178,7 +178,13 @@ export function PetWindow(): JSX.Element {
     >
       {/* Pet sprite with status indicator - panel is inside for absolute positioning */}
       <div className="pet-sprite-wrapper" style={spriteStyle}>
-        <PetSprite state={state.state} character={settings.character} />
+        <PetSprite
+          state={state.state}
+          character={settings.character}
+          customSprite={settings.customSprite}
+          size={petSize}
+          paused={!isVisible}
+        />
         <div className={`pet-status-indicator pet-status-${state.state}`} />
 
         {/* Detail panel - positioned absolutely relative to sprite wrapper */}

@@ -4,13 +4,56 @@
 
 export type PetState = 'idle' | 'working' | 'completed' | 'error'
 
-export type PetCharacter = 'cat' | 'bunny' | 'puppy' | 'piggy'
+export type BuiltInCharacter = 'cat' | 'bunny' | 'puppy' | 'piggy' | 'samurai'
+export type PetCharacter = BuiltInCharacter | 'custom'
 
-export const PET_CHARACTER_NAMES: Record<PetCharacter, string> = {
+export const PET_CHARACTER_NAMES: Record<BuiltInCharacter, string> = {
   cat: 'Cat',
   bunny: 'Bunny',
   puppy: 'Puppy',
   piggy: 'Piggy',
+  samurai: 'Samurai',
+}
+
+/**
+ * Custom sprite sheet configuration
+ * Compatible with Confirmo sprite format (8x7 grid)
+ */
+export interface CustomSprite {
+  id: string
+  name: string
+  imagePath: string // Path to sprite sheet image file
+  cols: number // Grid columns (default: 8)
+  rows: number // Grid rows (default: 7)
+  frameWidth: number // Pixel width per frame
+  frameHeight: number // Pixel height per frame
+  stateMapping: {
+    // Which row corresponds to each state
+    idle: number
+    working: number
+    completed: number
+    error: number
+  }
+  framesPerState: number // How many frames to cycle through per state
+  frameRate: number // Milliseconds per frame
+}
+
+/**
+ * Default sprite configuration matching Confirmo format
+ */
+export const DEFAULT_SPRITE_CONFIG: Omit<CustomSprite, 'id' | 'name' | 'imagePath'> = {
+  cols: 8,
+  rows: 7,
+  frameWidth: 64,
+  frameHeight: 64,
+  stateMapping: {
+    idle: 0,
+    working: 1,
+    completed: 2,
+    error: 3,
+  },
+  framesPerState: 8,
+  frameRate: 150,
 }
 
 export interface PetStateInfo {
@@ -32,6 +75,7 @@ export interface PetSettings {
   size: 'small' | 'medium' | 'large'
   notificationsEnabled: boolean
   character: PetCharacter
+  customSprite?: CustomSprite // Only used when character === 'custom'
 }
 
 export const DEFAULT_PET_SETTINGS: PetSettings = {
