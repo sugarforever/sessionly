@@ -20,10 +20,10 @@ import type {
   ProjectGroup,
 } from './session-types'
 
-import type { PetStateInfo, PetSettings, CustomSprite } from './pet-types'
+import type { PetStateInfo, PetSettings, CustomSprite, HookStatus } from './pet-types'
 
 export type { SessionSummary, Session, ProjectGroup }
-export type { PetStateInfo, PetSettings, CustomSprite }
+export type { PetStateInfo, PetSettings, CustomSprite, HookStatus }
 
 // Terminal types
 export interface TerminalSpawnOptions {
@@ -119,6 +119,12 @@ export interface ElectronAPI {
     updates: Partial<Omit<CustomSprite, 'id' | 'imagePath'>>
   ) => Promise<IpcResponse<CustomSprite | null>>
   spritesDelete: (id: string) => Promise<IpcResponse<boolean>>
+
+  // Hooks - Claude Code hooks integration
+  hooksGetStatus: () => Promise<IpcResponse<HookStatus>>
+  hooksInstall: () => Promise<IpcResponse<void>>
+  hooksUninstall: () => Promise<IpcResponse<void>>
+  hooksIsInstalled: () => Promise<IpcResponse<boolean>>
 }
 
 export type IpcChannels =
@@ -161,6 +167,10 @@ export type IpcChannels =
   | 'sprites:import'
   | 'sprites:update'
   | 'sprites:delete'
+  | 'hooks:getStatus'
+  | 'hooks:install'
+  | 'hooks:uninstall'
+  | 'hooks:isInstalled'
 
 declare global {
   interface Window {

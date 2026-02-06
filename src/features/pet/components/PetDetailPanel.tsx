@@ -57,6 +57,9 @@ export function PetDetailPanel({ state, isVisible, onClose }: PetDetailPanelProp
           <div className="pet-detail-row pet-detail-status">
             <span>{STATUS_ICONS[state.state]}</span>
             <span>{STATUS_LABELS[state.state]}</span>
+            {state.hookDriven && (
+              <span className="pet-detail-hook-badge" title="Real-time via hooks">&#x26A1;</span>
+            )}
           </div>
 
           {/* Project & branch row */}

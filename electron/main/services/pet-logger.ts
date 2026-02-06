@@ -5,7 +5,7 @@
  * All logs go to the main process console (visible in dev server terminal).
  */
 
-import type { PetState } from '../../shared/pet-types'
+import type { PetState, HookEventPayload } from '../../shared/pet-types'
 
 // ANSI color codes for terminal output
 const colors = {
@@ -300,6 +300,40 @@ class PetLogger {
     console.log(
       `${colors.dim}   RequestId ${requestId.slice(-8)}: ` +
       `${entryCount} entries, final=${finalContentType}${colors.reset}`
+    )
+  }
+
+  /**
+   * Log a received hook event
+   */
+  hookEvent(payload: HookEventPayload): void {
+    if (!this.enabled) return
+
+    const time = formatTime()
+    const sessionShort = payload.session_id.slice(0, 8)
+    const tool = payload.tool_name || ''
+
+    console.log(
+      `${colors.bold}[${time}]${colors.reset} ` +
+      `${colors.info}HOOK${colors.reset} ` +
+      `${payload.hook_event_name} ` +
+      `${colors.dim}session=${sessionShort}...${tool ? ` tool=${tool}` : ''}${colors.reset}`
+    )
+  }
+
+  /**
+   * Log hook server lifecycle events
+   */
+  hookServerStatus(status: 'started' | 'stopped' | 'failed', detail?: string): void {
+    if (!this.enabled) return
+
+    const time = formatTime()
+    const statusColor = status === 'started' ? colors.completed
+      : status === 'failed' ? colors.error
+      : colors.dim
+
+    console.log(
+      `${statusColor}[${time}] Hook server ${status}${detail ? `: ${detail}` : ''}${colors.reset}`
     )
   }
 }

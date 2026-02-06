@@ -566,6 +566,13 @@ html, body {
   color: #9ca3af;
 }
 
+/* Hook-driven badge */
+.pet-detail-hook-badge {
+  font-size: 10px;
+  margin-left: 2px;
+  opacity: 0.7;
+}
+
 /* State-specific left border */
 .pet-state-idle .pet-detail-panel {
   border-left: 3px solid #9ca3af;
