@@ -9,7 +9,7 @@ import { EventEmitter } from 'node:events'
 import * as fs from 'node:fs'
 import * as path from 'node:path'
 import * as os from 'node:os'
-import type { PetState, PetStateInfo } from '../../shared/pet-types'
+import type { PetState, PetStateInfo, HookEventPayload } from '../../shared/pet-types'
 import type { RawJSONLEntry, RawAssistantMessage, RawUserMessage, ContentBlock, ToolResultBlock } from '../../shared/session-types'
 import { isAssistantMessage, isUserMessage, isToolResultBlock, isToolUseBlock } from '../../shared/session-types'
 import { petLogger } from './pet-logger'
@@ -59,7 +59,6 @@ interface TrackedSession {
 const FOLLOW_UP_CHECK_MS = 5000
 // Maximum follow-up checks before considering a session stale (5s * 6 = 30s max wait)
 const MAX_FOLLOW_UP_CHECKS = 6
-
 export class SessionMonitor extends EventEmitter {
   private projectsDir: string
   private watcher: fs.FSWatcher | null = null
@@ -187,6 +186,106 @@ export class SessionMonitor extends EventEmitter {
   getActiveSessionCount(): number {
     this.cleanupStaleSessions()
     return this.activeSessions.size
+  }
+
+  /**
+   * Handle an incoming hook event from the HookServer.
+   * Maps hook events to pet states for precise, real-time transitions.
+   */
+  handleHookEvent(payload: HookEventPayload): void {
+    const { session_id, hook_event_name, tool_name, cwd } = payload
+    const hookKey = `hook:${session_id}`
+
+    // Map hook event to pet state
+    let state: PetState
+    let toolName: string | null = null
+    let errorMessage: string | null = null
+
+    switch (hook_event_name) {
+      case 'PreToolUse':
+        state = 'working'
+        toolName = tool_name ? this.formatToolName(tool_name) : null
+        break
+      case 'PostToolUse':
+        state = 'working'
+        toolName = tool_name ? this.formatToolName(tool_name) : null
+        break
+      case 'PostToolUseFailure':
+        state = 'error'
+        toolName = tool_name ? this.formatToolName(tool_name) : null
+        errorMessage = `Tool failed: ${tool_name || 'unknown'}`
+        break
+      case 'Stop':
+        state = 'completed'
+        break
+      case 'Notification':
+        state = 'completed'
+        toolName = 'Waiting for your input'
+        break
+      default:
+        return
+    }
+
+    // Extract project from cwd if available
+    const project = cwd ? cwd.split('/').filter(Boolean).pop() || cwd : null
+
+    // Get previous state for this hook session
+    const prevState = this.sessionPreviousStates.get(hookKey)
+
+    // Update tracked session
+    this.activeSessions.set(hookKey, {
+      state,
+      project: project || 'unknown',
+      sessionId: session_id,
+      lastUpdate: Date.now(),
+      filePath: hookKey, // Use hookKey as filePath for consistency
+      toolName,
+      errorMessage,
+      gitBranch: null,
+    })
+
+    // Update previous state tracking
+    this.sessionPreviousStates.set(hookKey, state)
+
+    // Emit session-specific events for notifications
+    if (prevState && prevState !== state) {
+      const sessionInfo: PetStateInfo = {
+        state,
+        sessionId: session_id,
+        project,
+        lastActivity: Date.now(),
+        toolName,
+        errorMessage,
+        gitBranch: null,
+        activeSessionCount: this.activeSessions.size,
+        hookDriven: true,
+      }
+
+      petLogger.stateChange({
+        sessionId: session_id,
+        project,
+        previousState: prevState,
+        newState: state,
+        reason: `Hook event: ${hook_event_name}`,
+        toolName,
+        errorMessage,
+        activeSessionCount: this.activeSessions.size,
+      })
+
+      if (state === 'completed' && prevState === 'working') {
+        this.emit('completed', sessionInfo)
+      } else if (state === 'error') {
+        this.emit('error', sessionInfo)
+      }
+    }
+
+    // Cancel follow-up timers for hook-driven sessions
+    // (hooks give us precise state, no need for polling)
+    this.clearFollowUpCheck(hookKey)
+
+    // Compute and emit aggregate state
+    this.computeAndEmitState()
+    this.resetIdleTimer()
   }
 
   private handleFileChange(_eventType: string, filename: string | null): void {
@@ -417,13 +516,16 @@ export class SessionMonitor extends EventEmitter {
     }
 
     if (selectedSession) {
+      // Check if the selected session is hook-driven
+      const isHook = selectedSession.filePath.startsWith('hook:')
       this.emitState(
         selectedSession.state,
         selectedSession.project,
         selectedSession.sessionId,
         selectedSession.toolName,
         selectedSession.errorMessage,
-        selectedSession.gitBranch
+        selectedSession.gitBranch,
+        isHook
       )
     }
   }
@@ -814,7 +916,8 @@ export class SessionMonitor extends EventEmitter {
     sessionId: string | null,
     toolName?: string | null,
     errorMessage?: string | null,
-    gitBranch?: string | null
+    gitBranch?: string | null,
+    hookDriven?: boolean
   ): void {
     const prevState = this.lastEmittedState.state
     const prevProject = this.lastEmittedState.project
@@ -854,6 +957,7 @@ export class SessionMonitor extends EventEmitter {
       errorMessage,
       gitBranch,
       activeSessionCount: this.activeSessions.size,
+      hookDriven: hookDriven || false,
     }
 
     // Log aggregate state change (different from per-session transitions)

@@ -1,6 +1,6 @@
 import { ipcMain, Notification, shell, BrowserWindow, nativeTheme, dialog } from 'electron'
 import { writeFile } from 'fs/promises'
-import type { IpcResponse, ProjectGroup, Session, TerminalSpawnOptions } from '../shared/types'
+import type { IpcResponse, ProjectGroup, Session, TerminalSpawnOptions, HookStatus } from '../shared/types'
 import type { CustomSprite } from '../shared/pet-types'
 
 export function setupIPC() {
@@ -341,6 +341,65 @@ export function setupIPC() {
       return {
         success: false,
         error: error instanceof Error ? error.message : 'Failed to delete sprite',
+      }
+    }
+  })
+
+  // ============================================================================
+  // Hooks - Claude Code hooks integration
+  // ============================================================================
+
+  ipcMain.handle('hooks:getStatus', async (): Promise<IpcResponse<HookStatus>> => {
+    try {
+      const { getHookServer } = await import('./index')
+      const { isHooksInstalled } = await import('./services/hook-installer')
+      const hookServer = getHookServer()
+      const status = hookServer
+        ? hookServer.getStatus(isHooksInstalled())
+        : { serverRunning: false, port: 19823, hooksInstalled: isHooksInstalled() }
+      return { success: true, data: status }
+    } catch (error) {
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Failed to get hooks status',
+      }
+    }
+  })
+
+  ipcMain.handle('hooks:install', async (): Promise<IpcResponse<void>> => {
+    try {
+      const { installHooks } = await import('./services/hook-installer')
+      installHooks()
+      return { success: true, data: undefined }
+    } catch (error) {
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Failed to install hooks',
+      }
+    }
+  })
+
+  ipcMain.handle('hooks:uninstall', async (): Promise<IpcResponse<void>> => {
+    try {
+      const { uninstallHooks } = await import('./services/hook-installer')
+      uninstallHooks()
+      return { success: true, data: undefined }
+    } catch (error) {
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Failed to uninstall hooks',
+      }
+    }
+  })
+
+  ipcMain.handle('hooks:isInstalled', async (): Promise<IpcResponse<boolean>> => {
+    try {
+      const { isHooksInstalled } = await import('./services/hook-installer')
+      return { success: true, data: isHooksInstalled() }
+    } catch (error) {
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Failed to check hooks installation',
       }
     }
   })

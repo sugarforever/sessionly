@@ -90,6 +90,7 @@ global.window.electron = {
       size: 'medium' as const,
       notificationsEnabled: true,
       character: 'cat' as const,
+      hooksEnabled: true,
     },
   }),
   petSetSettings: async () => ({ success: true, data: undefined }),
@@ -112,4 +113,12 @@ global.window.electron = {
   spritesImport: async () => ({ success: false, error: 'Import cancelled' }),
   spritesUpdate: async () => ({ success: true, data: null }),
   spritesDelete: async () => ({ success: true, data: false }),
+  // Hooks mocks
+  hooksGetStatus: async () => ({
+    success: true,
+    data: { serverRunning: false, port: 19823, hooksInstalled: false },
+  }),
+  hooksInstall: async () => ({ success: true, data: undefined }),
+  hooksUninstall: async () => ({ success: true, data: undefined }),
+  hooksIsInstalled: async () => ({ success: true, data: false }),
 }

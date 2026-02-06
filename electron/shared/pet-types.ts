@@ -67,6 +67,7 @@ export interface PetStateInfo {
   toolName?: string | null
   errorMessage?: string | null
   activeSessionCount?: number
+  hookDriven?: boolean
 }
 
 export interface PetSettings {
@@ -76,6 +77,7 @@ export interface PetSettings {
   notificationsEnabled: boolean
   character: PetCharacter
   customSprite?: CustomSprite // Only used when character === 'custom'
+  hooksEnabled: boolean
 }
 
 export const DEFAULT_PET_SETTINGS: PetSettings = {
@@ -84,6 +86,7 @@ export const DEFAULT_PET_SETTINGS: PetSettings = {
   size: 'medium',
   notificationsEnabled: true,
   character: 'cat',
+  hooksEnabled: true,
 }
 
 export const PET_SIZE_PIXELS: Record<PetSettings['size'], number> = {
@@ -99,3 +102,34 @@ export const PET_PANEL_HEIGHT = 120 // Compact panel max height
 
 // Window needs to fit pet + panel side by side
 export const PET_WINDOW_PADDING = 16
+
+// ============================================================================
+// Claude Code Hooks Integration
+// ============================================================================
+
+export const HOOK_SERVER_PORT = 19823
+export const HOOK_SERVER_PATH = '/sessionly'
+export const HOOK_IDENTIFIER = 'localhost:19823/sessionly'
+
+export type HookEventName =
+  | 'PreToolUse'
+  | 'PostToolUse'
+  | 'PostToolUseFailure'
+  | 'Stop'
+  | 'Notification'
+
+export interface HookEventPayload {
+  session_id: string
+  hook_event_name: HookEventName
+  tool_name?: string
+  cwd?: string
+  transcript_path?: string
+  // Additional fields from Claude Code hook stdin
+  [key: string]: unknown
+}
+
+export interface HookStatus {
+  serverRunning: boolean
+  port: number
+  hooksInstalled: boolean
+}

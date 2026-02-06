@@ -163,6 +163,12 @@ const electronAPI: ElectronAPI = {
   spritesImport: (name, config) => ipcRenderer.invoke('sprites:import', { name, config }),
   spritesUpdate: (id, updates) => ipcRenderer.invoke('sprites:update', { id, updates }),
   spritesDelete: (id) => ipcRenderer.invoke('sprites:delete', id),
+
+  // Hooks - Claude Code hooks integration
+  hooksGetStatus: () => ipcRenderer.invoke('hooks:getStatus'),
+  hooksInstall: () => ipcRenderer.invoke('hooks:install'),
+  hooksUninstall: () => ipcRenderer.invoke('hooks:uninstall'),
+  hooksIsInstalled: () => ipcRenderer.invoke('hooks:isInstalled'),
 }
 
 // Use `contextBridge` APIs to expose Electron APIs to

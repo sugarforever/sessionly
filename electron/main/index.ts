@@ -7,6 +7,10 @@ import { createSystemTray } from './system-tray'
 import { initAutoUpdater, setupAutoUpdaterIPC } from './auto-updater'
 import { getSessionMonitor } from './services/session-monitor'
 import { createPetWindow, setupPetIPC, destroyPetWindow, getPetSettings, shouldSuppressMainWindowActivation } from './pet-window'
+import { HookServer } from './services/hook-server'
+import { petLogger } from './services/pet-logger'
+import { installHooks, isHooksInstalled } from './services/hook-installer'
+import type { HookEventPayload } from '../shared/pet-types'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 
@@ -21,6 +25,14 @@ export const VITE_PUBLIC = VITE_DEV_SERVER_URL
 let mainWindow: BrowserWindow | null = null
 let tray: Tray | null = null
 let windowStateManager: WindowStateManager | null = null
+let hookServer: HookServer | null = null
+
+/**
+ * Get the hook server instance (used by IPC handlers).
+ */
+export function getHookServer(): HookServer | null {
+  return hookServer
+}
 
 function createWindow() {
   // Initialize window state manager
@@ -100,10 +112,34 @@ app.whenReady().then(() => {
 
   // Start session monitor and create pet window
   const sessionMonitor = getSessionMonitor()
-  sessionMonitor.start()
+  const petSettings = getPetSettings()
+
+  // Start hook server if hooks are enabled (preferred over file watcher)
+  if (petSettings.hooksEnabled) {
+    hookServer = new HookServer()
+    hookServer.start().then((started) => {
+      if (started) {
+        // Connect hook events to session monitor
+        hookServer!.on('hookEvent', (payload: HookEventPayload) => {
+          sessionMonitor.handleHookEvent(payload)
+        })
+
+        // Auto-install hooks if not already installed
+        if (!isHooksInstalled()) {
+          installHooks()
+        }
+      } else {
+        // Hook server failed to start (port in use, etc.) - fall back to file watcher
+        petLogger.warn('Hook server failed, falling back to file watcher')
+        sessionMonitor.start()
+      }
+    })
+  } else {
+    // No hooks - use file watcher
+    sessionMonitor.start()
+  }
 
   // Create pet window if enabled
-  const petSettings = getPetSettings()
   if (petSettings.enabled) {
     createPetWindow()
   }
@@ -144,4 +180,8 @@ app.on('will-quit', () => {
   tray?.destroy()
   destroyPetWindow()
   getSessionMonitor().stop()
+  if (hookServer) {
+    hookServer.stop()
+    hookServer = null
+  }
 })
