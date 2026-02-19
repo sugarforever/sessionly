@@ -7,9 +7,8 @@
 
 import { EventEmitter } from 'node:events'
 import * as http from 'node:http'
-import { HOOK_SERVER_PORT, HOOK_SERVER_PATH } from '../../shared/pet-types'
-import type { HookEventPayload, HookStatus } from '../../shared/pet-types'
-import { petLogger } from './pet-logger'
+import { HOOK_SERVER_PORT, HOOK_SERVER_PATH } from '../../shared/hook-types'
+import type { HookEventPayload, HookStatus } from '../../shared/hook-types'
 
 const MAX_BODY_SIZE = 1024 * 1024 // 1MB
 
@@ -31,10 +30,10 @@ export class HookServer extends EventEmitter {
 
       server.on('error', (err: NodeJS.ErrnoException) => {
         if (err.code === 'EADDRINUSE') {
-          petLogger.hookServerStatus('failed', `Port ${HOOK_SERVER_PORT} already in use`)
+          console.warn(`Hook server failed: Port ${HOOK_SERVER_PORT} already in use`)
           resolve(false)
         } else {
-          petLogger.hookServerStatus('failed', err.message)
+          console.warn(`Hook server failed: ${err.message}`)
           resolve(false)
         }
       })
@@ -42,7 +41,7 @@ export class HookServer extends EventEmitter {
       server.listen(HOOK_SERVER_PORT, '127.0.0.1', () => {
         this.server = server
         this.running = true
-        petLogger.hookServerStatus('started', `Listening on 127.0.0.1:${HOOK_SERVER_PORT}`)
+        console.log(`Hook server started: Listening on 127.0.0.1:${HOOK_SERVER_PORT}`)
         resolve(true)
       })
     })
@@ -61,7 +60,7 @@ export class HookServer extends EventEmitter {
       this.server.close(() => {
         this.server = null
         this.running = false
-        petLogger.hookServerStatus('stopped')
+        console.log('Hook server stopped')
         resolve()
       })
     })
@@ -117,7 +116,7 @@ export class HookServer extends EventEmitter {
         }
 
         // Log and emit the event
-        petLogger.hookEvent(payload)
+        console.log(`Hook event: ${payload.hook_event_name} session=${payload.session_id.slice(0, 8)}...`)
         this.emit('hookEvent', payload)
 
         res.writeHead(200, { 'Content-Type': 'application/json' })

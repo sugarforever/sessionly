@@ -1,14 +1,7 @@
 import { Tray, Menu, BrowserWindow, app, nativeImage } from 'electron'
 import path from 'node:path'
-import { VITE_PUBLIC } from './index'
-import {
-  showPetWindow,
-  hidePetWindow,
-  getPetSettings,
-  setPetSettings,
-} from './pet-window'
-import { PET_CHARACTER_NAMES } from '../shared/pet-types'
-import type { BuiltInCharacter, PetStateInfo } from '../shared/pet-types'
+import { VITE_PUBLIC, getNotificationsEnabled, setNotificationsEnabled } from './index'
+import type { PetStateInfo } from '../shared/hook-types'
 
 let systemTray: Tray | null = null
 
@@ -20,7 +13,7 @@ const STATUS_LABELS: Record<string, string> = {
 }
 
 /**
- * Update the system tray tooltip with current pet state
+ * Update the system tray tooltip with current session state
  */
 export function updateTrayTooltip(state: PetStateInfo): void {
   if (!systemTray) return
@@ -69,8 +62,6 @@ export function createSystemTray(mainWindow: BrowserWindow | null): Tray {
   const tray = new Tray(icon)
   tray.setToolTip('Sessionly')
 
-  const settings = getPetSettings()
-
   const contextMenu = Menu.buildFromTemplate([
     {
       label: 'Show App',
@@ -83,67 +74,12 @@ export function createSystemTray(mainWindow: BrowserWindow | null): Tray {
       type: 'separator',
     },
     {
-      label: 'Pet',
-      submenu: [
-        {
-          label: 'Show Pet',
-          type: 'checkbox',
-          checked: settings.enabled,
-          click: (menuItem) => {
-            if (menuItem.checked) {
-              showPetWindow()
-            } else {
-              hidePetWindow()
-            }
-          },
-        },
-        {
-          type: 'separator',
-        },
-        {
-          label: 'Character',
-          submenu: (Object.keys(PET_CHARACTER_NAMES) as BuiltInCharacter[]).map((character) => ({
-            label: PET_CHARACTER_NAMES[character],
-            type: 'radio' as const,
-            checked: settings.character === character,
-            click: () => setPetSettings({ character }),
-          })),
-        },
-        {
-          label: 'Size',
-          submenu: [
-            {
-              label: 'Small',
-              type: 'radio',
-              checked: settings.size === 'small',
-              click: () => setPetSettings({ size: 'small' }),
-            },
-            {
-              label: 'Medium',
-              type: 'radio',
-              checked: settings.size === 'medium',
-              click: () => setPetSettings({ size: 'medium' }),
-            },
-            {
-              label: 'Large',
-              type: 'radio',
-              checked: settings.size === 'large',
-              click: () => setPetSettings({ size: 'large' }),
-            },
-          ],
-        },
-        {
-          type: 'separator',
-        },
-        {
-          label: 'Notifications',
-          type: 'checkbox',
-          checked: settings.notificationsEnabled,
-          click: (menuItem) => {
-            setPetSettings({ notificationsEnabled: menuItem.checked })
-          },
-        },
-      ],
+      label: 'Notifications',
+      type: 'checkbox',
+      checked: getNotificationsEnabled(),
+      click: (menuItem) => {
+        setNotificationsEnabled(menuItem.checked)
+      },
     },
     {
       type: 'separator',

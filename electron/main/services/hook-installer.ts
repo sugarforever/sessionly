@@ -8,9 +8,8 @@
 import * as fs from 'node:fs'
 import * as path from 'node:path'
 import * as os from 'node:os'
-import { HOOK_IDENTIFIER, HOOK_SERVER_PORT, HOOK_SERVER_PATH } from '../../shared/pet-types'
-import type { HookEventName } from '../../shared/pet-types'
-import { petLogger } from './pet-logger'
+import { HOOK_IDENTIFIER, HOOK_SERVER_PORT, HOOK_SERVER_PATH } from '../../shared/hook-types'
+import type { HookEventName } from '../../shared/hook-types'
 
 const SETTINGS_PATH = path.join(os.homedir(), '.claude', 'settings.json')
 
@@ -52,7 +51,7 @@ function readSettings(): ClaudeSettings {
     const content = fs.readFileSync(SETTINGS_PATH, 'utf-8')
     return JSON.parse(content) as ClaudeSettings
   } catch (error) {
-    petLogger.warn(`Failed to read Claude settings: ${error}`)
+    console.warn(`Failed to read Claude settings: ${error}`)
     return {}
   }
 }
@@ -147,9 +146,9 @@ export function installHooks(): void {
 
   if (installed > 0) {
     writeSettings(settings)
-    petLogger.info(`Installed Sessionly hooks for ${installed} event(s)`)
+    console.log(`Installed Sessionly hooks for ${installed} event(s)`)
   } else {
-    petLogger.debug('Sessionly hooks already installed')
+    // Hooks already installed
   }
 }
 
@@ -186,8 +185,8 @@ export function uninstallHooks(): void {
 
   if (removed > 0) {
     writeSettings(settings)
-    petLogger.info(`Uninstalled ${removed} Sessionly hook(s)`)
+    console.log(`Uninstalled ${removed} Sessionly hook(s)`)
   } else {
-    petLogger.debug('No Sessionly hooks to uninstall')
+    // No hooks to uninstall
   }
 }

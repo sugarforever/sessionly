@@ -1,5 +1,5 @@
 import { contextBridge, ipcRenderer } from 'electron'
-import type { ElectronAPI, UpdateInfo, UpdateProgress, PetStateInfo, PetSettings } from '../shared/types'
+import type { ElectronAPI, UpdateInfo, UpdateProgress } from '../shared/types'
 
 // Expose protected methods that allow the renderer process to use
 // ipcRenderer without exposing the entire object
@@ -121,48 +121,6 @@ const electronAPI: ElectronAPI = {
       ipcRenderer.removeListener('update:error', subscription)
     }
   },
-
-  // Pet - Floating session monitor cat
-  petMouseEnter: () => ipcRenderer.send('pet:mouseEnter'),
-  petMouseLeave: () => ipcRenderer.send('pet:mouseLeave'),
-  petStartDrag: () => ipcRenderer.send('pet:startDrag'),
-  petEndDrag: () => ipcRenderer.send('pet:endDrag'),
-  petDragMove: (delta) => ipcRenderer.send('pet:dragMove', delta),
-  petGetSettings: () => ipcRenderer.invoke('pet:getSettings'),
-  petSetSettings: (settings) => ipcRenderer.invoke('pet:setSettings', settings),
-  petGetState: () => ipcRenderer.invoke('pet:getState'),
-  onPetStateChange: (callback) => {
-    const subscription = (_event: Electron.IpcRendererEvent, state: PetStateInfo) =>
-      callback(state)
-    ipcRenderer.on('pet:stateChange', subscription)
-    return () => {
-      ipcRenderer.removeListener('pet:stateChange', subscription)
-    }
-  },
-  onPetSettingsChange: (callback) => {
-    const subscription = (_event: Electron.IpcRendererEvent, settings: PetSettings) =>
-      callback(settings)
-    ipcRenderer.on('pet:settingsChange', subscription)
-    return () => {
-      ipcRenderer.removeListener('pet:settingsChange', subscription)
-    }
-  },
-  petGetPanelSide: () => ipcRenderer.invoke('pet:getPanelSide'),
-  onPetPanelSideChange: (callback) => {
-    const subscription = (_event: Electron.IpcRendererEvent, side: 'left' | 'right') =>
-      callback(side)
-    ipcRenderer.on('pet:panelSide', subscription)
-    return () => {
-      ipcRenderer.removeListener('pet:panelSide', subscription)
-    }
-  },
-
-  // Custom Sprites - Pet sprite sheet management
-  spritesGetAll: () => ipcRenderer.invoke('sprites:getAll'),
-  spritesGet: (id) => ipcRenderer.invoke('sprites:get', id),
-  spritesImport: (name, config) => ipcRenderer.invoke('sprites:import', { name, config }),
-  spritesUpdate: (id, updates) => ipcRenderer.invoke('sprites:update', { id, updates }),
-  spritesDelete: (id) => ipcRenderer.invoke('sprites:delete', id),
 
   // Hooks - Claude Code hooks integration
   hooksGetStatus: () => ipcRenderer.invoke('hooks:getStatus'),

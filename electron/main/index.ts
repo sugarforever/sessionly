@@ -1,16 +1,15 @@
-import { app, BrowserWindow, Tray, session } from 'electron'
+import { app, BrowserWindow, Notification, Tray, session } from 'electron'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
+import Store from 'electron-store'
 import { WindowStateManager } from './window-state-manager'
 import { setupIPC } from './ipc-handlers'
-import { createSystemTray } from './system-tray'
+import { createSystemTray, updateTrayTooltip } from './system-tray'
 import { initAutoUpdater, setupAutoUpdaterIPC } from './auto-updater'
 import { getSessionMonitor } from './services/session-monitor'
-import { createPetWindow, setupPetIPC, destroyPetWindow, getPetSettings, shouldSuppressMainWindowActivation } from './pet-window'
 import { HookServer } from './services/hook-server'
-import { petLogger } from './services/pet-logger'
 import { installHooks, isHooksInstalled } from './services/hook-installer'
-import type { HookEventPayload } from '../shared/pet-types'
+import type { HookEventPayload, PetStateInfo } from '../shared/hook-types'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 
@@ -26,6 +25,25 @@ let mainWindow: BrowserWindow | null = null
 let tray: Tray | null = null
 let windowStateManager: WindowStateManager | null = null
 let hookServer: HookServer | null = null
+
+// Simple settings store for notifications
+const settingsStore = new Store<{ notificationsEnabled: boolean }>({
+  defaults: { notificationsEnabled: true },
+})
+
+/**
+ * Get whether notifications are enabled.
+ */
+export function getNotificationsEnabled(): boolean {
+  return settingsStore.get('notificationsEnabled')
+}
+
+/**
+ * Set whether notifications are enabled.
+ */
+export function setNotificationsEnabled(enabled: boolean): void {
+  settingsStore.set('notificationsEnabled', enabled)
+}
 
 /**
  * Get the hook server instance (used by IPC handlers).
@@ -77,6 +95,15 @@ function createWindow() {
   })
 }
 
+/**
+ * Show a native notification if enabled.
+ */
+function showNotification(title: string, body: string): void {
+  if (getNotificationsEnabled() && Notification.isSupported()) {
+    new Notification({ title, body, silent: false }).show()
+  }
+}
+
 // App lifecycle
 app.whenReady().then(() => {
   // Setup Content Security Policy (production only)
@@ -102,7 +129,6 @@ app.whenReady().then(() => {
   // Setup IPC handlers
   setupIPC()
   setupAutoUpdaterIPC()
-  setupPetIPC()
 
   // Create window
   createWindow()
@@ -110,39 +136,48 @@ app.whenReady().then(() => {
   // Create system tray
   tray = createSystemTray(mainWindow)
 
-  // Start session monitor and create pet window
+  // Start session monitor
   const sessionMonitor = getSessionMonitor()
-  const petSettings = getPetSettings()
 
-  // Start hook server if hooks are enabled (preferred over file watcher)
-  if (petSettings.hooksEnabled) {
-    hookServer = new HookServer()
-    hookServer.start().then((started) => {
-      if (started) {
-        // Connect hook events to session monitor
-        hookServer!.on('hookEvent', (payload: HookEventPayload) => {
-          sessionMonitor.handleHookEvent(payload)
-        })
+  // Listen for session events and show notifications
+  sessionMonitor.on('completed', (state: PetStateInfo) => {
+    showNotification(
+      'Ready for Input',
+      `${state.project || 'Session'} is waiting for you`
+    )
+  })
 
-        // Auto-install hooks if not already installed
-        if (!isHooksInstalled()) {
-          installHooks()
-        }
-      } else {
-        // Hook server failed to start (port in use, etc.) - fall back to file watcher
-        petLogger.warn('Hook server failed, falling back to file watcher')
-        sessionMonitor.start()
+  sessionMonitor.on('error', (state: PetStateInfo) => {
+    const errorMsg = state.errorMessage ? `: ${state.errorMessage}` : ''
+    showNotification(
+      'Error Occurred',
+      `${state.project || 'Session'} hit an error${errorMsg}`
+    )
+  })
+
+  sessionMonitor.on('stateChange', (state: PetStateInfo) => {
+    updateTrayTooltip(state)
+  })
+
+  // Start hook server (preferred over file watcher)
+  hookServer = new HookServer()
+  hookServer.start().then((started) => {
+    if (started) {
+      // Connect hook events to session monitor
+      hookServer!.on('hookEvent', (payload: HookEventPayload) => {
+        sessionMonitor.handleHookEvent(payload)
+      })
+
+      // Auto-install hooks if not already installed
+      if (!isHooksInstalled()) {
+        installHooks()
       }
-    })
-  } else {
-    // No hooks - use file watcher
-    sessionMonitor.start()
-  }
-
-  // Create pet window if enabled
-  if (petSettings.enabled) {
-    createPetWindow()
-  }
+    } else {
+      // Hook server failed to start (port in use, etc.) - fall back to file watcher
+      console.warn('Hook server failed, falling back to file watcher')
+      sessionMonitor.start()
+    }
+  })
 
   // Initialize auto-updater (production only)
   if (!VITE_DEV_SERVER_URL && mainWindow) {
@@ -150,10 +185,6 @@ app.whenReady().then(() => {
   }
 
   app.on('activate', () => {
-    // Don't show main window if user is interacting with the pet
-    if (shouldSuppressMainWindowActivation()) {
-      return
-    }
     if (BrowserWindow.getAllWindows().length === 0) {
       createWindow()
     } else {
@@ -178,7 +209,6 @@ app.on('before-quit', () => {
 // Cleanup
 app.on('will-quit', () => {
   tray?.destroy()
-  destroyPetWindow()
   getSessionMonitor().stop()
   if (hookServer) {
     hookServer.stop()

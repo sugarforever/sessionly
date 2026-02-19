@@ -1,4 +1,5 @@
 import { type ReactNode, useState, createContext, useContext } from 'react'
+import { MigrationBanner } from './MigrationBanner'
 import { Sidebar } from './Sidebar'
 import { UpdateNotification } from './UpdateNotification'
 
@@ -26,13 +27,16 @@ export function Layout({ children }: LayoutProps) {
 
   return (
     <LayoutContext.Provider value={{ sidebarCollapsed, setSidebarCollapsed }}>
-      <div className="flex h-screen overflow-hidden bg-background">
+      <div className="flex h-screen flex-col overflow-hidden bg-background">
+        <MigrationBanner />
+        <div className="flex flex-1 overflow-hidden">
         <Sidebar
           collapsed={sidebarCollapsed}
           onToggle={() => setSidebarCollapsed(!sidebarCollapsed)}
         />
         <main className="flex-1 overflow-hidden bg-background">{children}</main>
         <UpdateNotification />
+        </div>
       </div>
     </LayoutContext.Provider>
   )

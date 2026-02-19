@@ -1,7 +1,6 @@
 import { ipcMain, Notification, shell, BrowserWindow, nativeTheme, dialog } from 'electron'
 import { writeFile } from 'fs/promises'
 import type { IpcResponse, ProjectGroup, Session, TerminalSpawnOptions, HookStatus } from '../shared/types'
-import type { CustomSprite } from '../shared/pet-types'
 
 export function setupIPC() {
   // ============================================================================
@@ -233,114 +232,6 @@ export function setupIPC() {
       return {
         success: false,
         error: error instanceof Error ? error.message : 'Failed to kill terminal',
-      }
-    }
-  })
-
-  // ============================================================================
-  // Custom Sprites - Pet sprite sheet management
-  // ============================================================================
-
-  // Get all custom sprites
-  ipcMain.handle('sprites:getAll', async (): Promise<IpcResponse<CustomSprite[]>> => {
-    try {
-      const { getAllCustomSprites } = await import('./services/custom-sprite-manager')
-      const sprites = await getAllCustomSprites()
-      return { success: true, data: sprites }
-    } catch (error) {
-      return {
-        success: false,
-        error: error instanceof Error ? error.message : 'Failed to get custom sprites',
-      }
-    }
-  })
-
-  // Get a single custom sprite by ID
-  ipcMain.handle(
-    'sprites:get',
-    async (_event, id: string): Promise<IpcResponse<CustomSprite | null>> => {
-      try {
-        const { getCustomSprite } = await import('./services/custom-sprite-manager')
-        const sprite = await getCustomSprite(id)
-        return { success: true, data: sprite }
-      } catch (error) {
-        return {
-          success: false,
-          error: error instanceof Error ? error.message : 'Failed to get custom sprite',
-        }
-      }
-    }
-  )
-
-  // Import a new custom sprite (opens file dialog)
-  ipcMain.handle(
-    'sprites:import',
-    async (
-      event,
-      params: { name: string; config?: Partial<Omit<CustomSprite, 'id' | 'name' | 'imagePath'>> }
-    ): Promise<IpcResponse<CustomSprite>> => {
-      try {
-        const { importSprite, getSpritesDirectory } = await import(
-          './services/custom-sprite-manager'
-        )
-
-        // Show file dialog to select sprite sheet image
-        const window = BrowserWindow.fromWebContents(event.sender)
-        const result = await dialog.showOpenDialog(window!, {
-          title: 'Select Sprite Sheet Image',
-          defaultPath: getSpritesDirectory(),
-          filters: [
-            { name: 'Images', extensions: ['png', 'jpg', 'jpeg', 'gif', 'webp'] },
-            { name: 'All Files', extensions: ['*'] },
-          ],
-          properties: ['openFile'],
-        })
-
-        if (result.canceled || result.filePaths.length === 0) {
-          return { success: false, error: 'Import cancelled' }
-        }
-
-        const sprite = await importSprite(result.filePaths[0], params.name, params.config)
-        return { success: true, data: sprite }
-      } catch (error) {
-        return {
-          success: false,
-          error: error instanceof Error ? error.message : 'Failed to import sprite',
-        }
-      }
-    }
-  )
-
-  // Update a custom sprite's configuration
-  ipcMain.handle(
-    'sprites:update',
-    async (
-      _event,
-      params: { id: string; updates: Partial<Omit<CustomSprite, 'id' | 'imagePath'>> }
-    ): Promise<IpcResponse<CustomSprite | null>> => {
-      try {
-        const { updateSprite } = await import('./services/custom-sprite-manager')
-        const sprite = await updateSprite(params.id, params.updates)
-        return { success: true, data: sprite }
-      } catch (error) {
-        return {
-          success: false,
-          error: error instanceof Error ? error.message : 'Failed to update sprite',
-        }
-      }
-    }
-  )
-
-  // Delete a custom sprite
-  ipcMain.handle('sprites:delete', async (_event, id: string): Promise<IpcResponse<boolean>> => {
-    try {
-      const { deleteSprite } = await import('./services/custom-sprite-manager')
-      const deleted = await deleteSprite(id)
-      return { success: true, data: deleted }
-    } catch (error) {
-      return {
-        success: false,
-        error: error instanceof Error ? error.message : 'Failed to delete sprite',
       }
     }
   })

@@ -76,43 +76,6 @@ global.window.electron = {
   onUpdateProgress: () => () => {},
   onUpdateDownloaded: () => () => {},
   onUpdateError: () => () => {},
-  // Pet mocks
-  petMouseEnter: () => {},
-  petMouseLeave: () => {},
-  petStartDrag: () => {},
-  petEndDrag: () => {},
-  petDragMove: () => {},
-  petGetSettings: async () => ({
-    success: true,
-    data: {
-      enabled: true,
-      position: { x: 100, y: 100 },
-      size: 'medium' as const,
-      notificationsEnabled: true,
-      character: 'cat' as const,
-      hooksEnabled: true,
-    },
-  }),
-  petSetSettings: async () => ({ success: true, data: undefined }),
-  petGetState: async () => ({
-    success: true,
-    data: {
-      state: 'idle' as const,
-      sessionId: null,
-      project: null,
-      lastActivity: Date.now(),
-    },
-  }),
-  onPetStateChange: () => () => {},
-  onPetSettingsChange: () => () => {},
-  petGetPanelSide: async () => ({ success: true, data: 'left' as const }),
-  onPetPanelSideChange: () => () => {},
-  // Custom sprites mocks
-  spritesGetAll: async () => ({ success: true, data: [] }),
-  spritesGet: async () => ({ success: true, data: null }),
-  spritesImport: async () => ({ success: false, error: 'Import cancelled' }),
-  spritesUpdate: async () => ({ success: true, data: null }),
-  spritesDelete: async () => ({ success: true, data: false }),
   // Hooks mocks
   hooksGetStatus: async () => ({
     success: true,

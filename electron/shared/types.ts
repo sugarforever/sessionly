@@ -20,10 +20,10 @@ import type {
   ProjectGroup,
 } from './session-types'
 
-import type { PetStateInfo, PetSettings, CustomSprite, HookStatus } from './pet-types'
+import type { PetStateInfo, HookStatus } from './hook-types'
 
 export type { SessionSummary, Session, ProjectGroup }
-export type { PetStateInfo, PetSettings, CustomSprite, HookStatus }
+export type { PetStateInfo, HookStatus }
 
 // Terminal types
 export interface TerminalSpawnOptions {
@@ -93,33 +93,6 @@ export interface ElectronAPI {
   onUpdateDownloaded: (callback: (info: UpdateInfo) => void) => () => void
   onUpdateError: (callback: (error: string) => void) => () => void
 
-  // Pet - Floating session monitor cat
-  petMouseEnter: () => void
-  petMouseLeave: () => void
-  petStartDrag: () => void
-  petEndDrag: () => void
-  petDragMove: (delta: { deltaX: number; deltaY: number }) => void
-  petGetSettings: () => Promise<IpcResponse<PetSettings>>
-  petSetSettings: (settings: Partial<PetSettings>) => Promise<IpcResponse<void>>
-  petGetState: () => Promise<IpcResponse<PetStateInfo>>
-  onPetStateChange: (callback: (state: PetStateInfo) => void) => () => void
-  onPetSettingsChange: (callback: (settings: PetSettings) => void) => () => void
-  petGetPanelSide: () => Promise<IpcResponse<'left' | 'right'>>
-  onPetPanelSideChange: (callback: (side: 'left' | 'right') => void) => () => void
-
-  // Custom Sprites - Pet sprite sheet management
-  spritesGetAll: () => Promise<IpcResponse<CustomSprite[]>>
-  spritesGet: (id: string) => Promise<IpcResponse<CustomSprite | null>>
-  spritesImport: (
-    name: string,
-    config?: Partial<Omit<CustomSprite, 'id' | 'name' | 'imagePath'>>
-  ) => Promise<IpcResponse<CustomSprite>>
-  spritesUpdate: (
-    id: string,
-    updates: Partial<Omit<CustomSprite, 'id' | 'imagePath'>>
-  ) => Promise<IpcResponse<CustomSprite | null>>
-  spritesDelete: (id: string) => Promise<IpcResponse<boolean>>
-
   // Hooks - Claude Code hooks integration
   hooksGetStatus: () => Promise<IpcResponse<HookStatus>>
   hooksInstall: () => Promise<IpcResponse<void>>
@@ -154,19 +127,6 @@ export type IpcChannels =
   | 'update:progress'
   | 'update:downloaded'
   | 'update:error'
-  | 'pet:startDrag'
-  | 'pet:endDrag'
-  | 'pet:dragMove'
-  | 'pet:getSettings'
-  | 'pet:setSettings'
-  | 'pet:getState'
-  | 'pet:stateChange'
-  | 'pet:settingsChange'
-  | 'sprites:getAll'
-  | 'sprites:get'
-  | 'sprites:import'
-  | 'sprites:update'
-  | 'sprites:delete'
   | 'hooks:getStatus'
   | 'hooks:install'
   | 'hooks:uninstall'

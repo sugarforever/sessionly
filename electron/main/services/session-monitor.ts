@@ -9,10 +9,9 @@ import { EventEmitter } from 'node:events'
 import * as fs from 'node:fs'
 import * as path from 'node:path'
 import * as os from 'node:os'
-import type { PetState, PetStateInfo, HookEventPayload } from '../../shared/pet-types'
+import type { PetState, PetStateInfo, HookEventPayload } from '../../shared/hook-types'
 import type { RawJSONLEntry, RawAssistantMessage, RawUserMessage, ContentBlock, ToolResultBlock } from '../../shared/session-types'
 import { isAssistantMessage, isUserMessage, isToolResultBlock, isToolUseBlock } from '../../shared/session-types'
-import { petLogger } from './pet-logger'
 
 const IDLE_TIMEOUT_MS = 30000 // 30 seconds
 const SESSION_STALE_MS = 60000 // 1 minute - consider session stale after this
@@ -95,7 +94,7 @@ export class SessionMonitor extends EventEmitter {
 
     // Check if projects directory exists
     if (!fs.existsSync(this.projectsDir)) {
-      petLogger.warn('Claude projects directory not found, pet will stay idle')
+      console.warn('Claude projects directory not found, session monitor will stay idle')
       this.emitState('idle', null, null)
       return
     }
@@ -111,7 +110,7 @@ export class SessionMonitor extends EventEmitter {
       )
 
       this.watcher.on('error', (error) => {
-        petLogger.error('Session monitor watcher error', error as Error)
+        console.error('Session monitor watcher error', error)
       })
 
       // Start idle timer
@@ -120,9 +119,9 @@ export class SessionMonitor extends EventEmitter {
       // Initial scan to find current state
       this.scanForActivity()
 
-      petLogger.startup(this.projectsDir)
+      console.log(`Session monitor started, watching: ${this.projectsDir}`)
     } catch (error) {
-      petLogger.error('Failed to start session monitor', error as Error)
+      console.error('Failed to start session monitor', error)
     }
   }
 
@@ -161,7 +160,7 @@ export class SessionMonitor extends EventEmitter {
 
     this.activeSessions.clear()
 
-    petLogger.shutdown()
+    console.log('Session monitor stopped')
   }
 
   /**
@@ -261,16 +260,7 @@ export class SessionMonitor extends EventEmitter {
         hookDriven: true,
       }
 
-      petLogger.stateChange({
-        sessionId: session_id,
-        project,
-        previousState: prevState,
-        newState: state,
-        reason: `Hook event: ${hook_event_name}`,
-        toolName,
-        errorMessage,
-        activeSessionCount: this.activeSessions.size,
-      })
+      console.log(`[${project}] ${prevState} → ${state} (Hook event: ${hook_event_name})`)
 
       if (state === 'completed' && prevState === 'working') {
         this.emit('completed', sessionInfo)
@@ -351,7 +341,7 @@ export class SessionMonitor extends EventEmitter {
         this.emitState('idle', null, null)
       }
     } catch (error) {
-      petLogger.error('Failed to scan for activity', error as Error)
+      console.error('Failed to scan for activity', error)
     }
   }
 
@@ -435,17 +425,7 @@ export class SessionMonitor extends EventEmitter {
               activeSessionCount: this.activeSessions.size,
             }
 
-            // Log the state transition
-            petLogger.stateChange({
-              sessionId,
-              project,
-              previousState: prevSessionState,
-              newState: context.state,
-              reason: `Session file analysis (recently modified: ${Date.now() - stats.mtimeMs < 3000})`,
-              toolName: context.toolName,
-              errorMessage: context.errorMessage,
-              activeSessionCount: this.activeSessions.size,
-            })
+            console.log(`[${project}] ${prevSessionState} → ${context.state} (file analysis)`)
 
             if (context.state === 'completed' && prevSessionState === 'working') {
               this.emit('completed', sessionInfo)
@@ -472,7 +452,7 @@ export class SessionMonitor extends EventEmitter {
       }
     } catch (error) {
       // File might be temporarily unavailable
-      petLogger.debug(`Failed to analyze session file: ${filePath.split('/').pop()}`)
+      // File might be temporarily unavailable
     }
   }
 
@@ -530,7 +510,7 @@ export class SessionMonitor extends EventEmitter {
     }
   }
 
-  private determineStateFromLines(lines: string[], isRecentlyModified: boolean = true, filePath?: string): SessionContext {
+  private determineStateFromLines(lines: string[], isRecentlyModified: boolean = true, _filePath?: string): SessionContext {
     // Claude Code NEVER writes stop_reason: "end_turn" to JSONL files
     // All entries have stop_reason: null
     // We need to detect state based on:
@@ -538,16 +518,8 @@ export class SessionMonitor extends EventEmitter {
     // 2. Content type (text vs tool_use vs tool_result)
     // 3. File modification recency
 
-    // Helper to log detection and return result
-    const logAndReturn = (state: PetState, reason: string, contentTypes: string[], lastEntryType: string, context: Omit<SessionContext, 'state'> = {}): SessionContext => {
-      petLogger.detection({
-        filePath: filePath || 'unknown',
-        isRecentlyModified,
-        lastEntryType,
-        contentTypes,
-        determinedState: state,
-        reason,
-      })
+    // Helper to return result
+    const logAndReturn = (state: PetState, _reason: string, _contentTypes: string[], _lastEntryType: string, context: Omit<SessionContext, 'state'> = {}): SessionContext => {
       return { state, ...context }
     }
 
@@ -671,7 +643,7 @@ export class SessionMonitor extends EventEmitter {
     // Check if we've exceeded the maximum follow-up attempts
     const currentCount = this.followUpCounts.get(filePath) || 0
     if (currentCount >= MAX_FOLLOW_UP_CHECKS) {
-      petLogger.debug(`Max follow-ups reached for: ${filePath.split('/').pop()?.slice(0, 8)}... (${currentCount}/${MAX_FOLLOW_UP_CHECKS})`)
+      // Max follow-ups reached
       // Mark session as stale/idle since it's been waiting too long
       this.handleStaleWorkingSession(filePath)
       return
@@ -688,8 +660,7 @@ export class SessionMonitor extends EventEmitter {
 
     const timer = setTimeout(() => {
       this.followUpTimers.delete(filePath)
-      const count = this.followUpCounts.get(filePath) || 0
-      petLogger.debug(`Follow-up check for: ${filePath.split('/').pop()?.slice(0, 8)}... (${count}/${MAX_FOLLOW_UP_CHECKS})`)
+      // Follow-up check
       // Re-analyze the file to detect state change
       this.analyzeSessionFile(filePath)
     }, FOLLOW_UP_CHECK_MS)
@@ -716,24 +687,14 @@ export class SessionMonitor extends EventEmitter {
     // If there's an unresolved tool_use, likely waiting for user input (permission prompt)
     // Transition to "completed" instead of "idle"
     if (hasUnresolvedTool) {
-      petLogger.info(`Session waiting for input after ${MAX_FOLLOW_UP_CHECKS} follow-ups: ${session.project}`)
+      console.log(`Session waiting for input after ${MAX_FOLLOW_UP_CHECKS} follow-ups: ${session.project}`)
 
       session.state = 'completed'
       session.toolName = 'Waiting for your input'
       this.activeSessions.set(filePath, session)
       this.sessionPreviousStates.set(filePath, 'completed')
 
-      // Log the transition
-      petLogger.stateChange({
-        sessionId: session.sessionId,
-        project: session.project,
-        previousState: prevState,
-        newState: 'completed',
-        reason: `Likely waiting for permission or input (unresolved tool_use after ${MAX_FOLLOW_UP_CHECKS * FOLLOW_UP_CHECK_MS / 1000}s)`,
-        toolName: 'Waiting for your input',
-        errorMessage: null,
-        activeSessionCount: this.activeSessions.size,
-      })
+      console.log(`[${session.project}] ${prevState} → completed (waiting for input)`)
 
       // Emit completed event for notification
       const sessionInfo: PetStateInfo = {
@@ -749,24 +710,12 @@ export class SessionMonitor extends EventEmitter {
       this.emit('completed', sessionInfo)
     } else {
       // No tool_use, session was probably abandoned
-      petLogger.warn(`Session stale after ${MAX_FOLLOW_UP_CHECKS} follow-ups: ${session.project}`)
+      console.warn(`Session stale after ${MAX_FOLLOW_UP_CHECKS} follow-ups: ${session.project}`)
 
       session.state = 'idle'
       session.toolName = null
       this.activeSessions.set(filePath, session)
       this.sessionPreviousStates.set(filePath, 'idle')
-
-      // Log the forced transition
-      petLogger.stateChange({
-        sessionId: session.sessionId,
-        project: session.project,
-        previousState: prevState,
-        newState: 'idle',
-        reason: `Forced idle after ${MAX_FOLLOW_UP_CHECKS * FOLLOW_UP_CHECK_MS / 1000}s of no activity`,
-        toolName: null,
-        errorMessage: null,
-        activeSessionCount: this.activeSessions.size,
-      })
     }
 
     // Clear follow-up tracking
@@ -960,20 +909,8 @@ export class SessionMonitor extends EventEmitter {
       hookDriven: hookDriven || false,
     }
 
-    // Log aggregate state change (different from per-session transitions)
     if (prevState !== state || prevProject !== project) {
-      petLogger.stateChange({
-        sessionId: sessionId || 'none',
-        project,
-        previousState: prevState,
-        newState: state,
-        reason: 'Aggregate state updated (highest priority session)',
-        toolName,
-        errorMessage,
-        activeSessionCount: this.activeSessions.size,
-      })
-    } else {
-      petLogger.debug(`State unchanged: ${state} (tool: ${toolName || 'none'})`)
+      console.log(`[${project || 'none'}] ${prevState} → ${state} (aggregate)`)
     }
     this.emit('stateChange', stateInfo)
 
