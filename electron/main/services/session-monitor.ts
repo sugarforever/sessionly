@@ -450,7 +450,7 @@ export class SessionMonitor extends EventEmitter {
       } finally {
         await fd.close()
       }
-    } catch (_error) {
+    } catch {
       // File might be temporarily unavailable
     }
   }
