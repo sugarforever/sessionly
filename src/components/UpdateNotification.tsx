@@ -27,6 +27,11 @@ export function UpdateNotification() {
           setStatus('idle')
         }
       } catch (e) {
+        // Silently ignore in dev (updater not configured)
+        if (import.meta.env.DEV) {
+          setStatus('idle')
+          return
+        }
         setStatus('error')
         setError(e instanceof Error ? e.message : 'Failed to check for updates')
       }

@@ -58,9 +58,9 @@ pub fn run() {
 
             // Start stale session pruning
             let monitor_prune = monitor.clone();
-            tokio::spawn(async move {
+            std::thread::spawn(move || {
                 loop {
-                    tokio::time::sleep(std::time::Duration::from_secs(30)).await;
+                    std::thread::sleep(std::time::Duration::from_secs(30));
                     monitor_prune.prune_stale();
                 }
             });

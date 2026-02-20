@@ -51,6 +51,6 @@ jobs:
       - name: Format check
         run: npm run format:check
 
-      - name: Cargo check
+      - name: Cargo clippy
         working-directory: src-tauri
-        run: cargo check
+        run: cargo clippy -- -D warnings

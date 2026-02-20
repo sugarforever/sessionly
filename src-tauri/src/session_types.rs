@@ -6,38 +6,6 @@ use std::collections::HashMap;
 // ============================================================================
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(untagged)]
-pub enum ContentBlock {
-    Text {
-        #[serde(rename = "type")]
-        block_type: String,
-        text: String,
-    },
-    Thinking {
-        #[serde(rename = "type")]
-        block_type: String,
-        thinking: String,
-        #[serde(skip_serializing_if = "Option::is_none")]
-        signature: Option<String>,
-    },
-    ToolUse {
-        #[serde(rename = "type")]
-        block_type: String,
-        id: String,
-        name: String,
-        input: serde_json::Value,
-    },
-    ToolResult {
-        #[serde(rename = "type")]
-        block_type: String,
-        tool_use_id: String,
-        content: serde_json::Value,
-        #[serde(skip_serializing_if = "Option::is_none")]
-        is_error: Option<bool>,
-    },
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct RawMessageContent {
     pub role: String,
     pub content: serde_json::Value, // Can be string or array of ContentBlock
@@ -53,8 +21,6 @@ pub struct RawEntry {
     #[serde(rename = "parentUuid")]
     pub parent_uuid: Option<serde_json::Value>,
     pub timestamp: Option<String>,
-    #[serde(rename = "sessionId")]
-    pub session_id: Option<String>,
     pub cwd: Option<String>,
     pub version: Option<String>,
     #[serde(rename = "gitBranch")]

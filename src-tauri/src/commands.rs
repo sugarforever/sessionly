@@ -20,7 +20,7 @@ pub async fn get_session(session_id: String, project_encoded: String) -> Option<
 
 #[tauri::command]
 pub fn get_version(app: tauri::AppHandle) -> String {
-    app.config().version.clone().unwrap_or_else(|| "2.0.0".to_string())
+    app.config().version.clone().unwrap_or_else(|| "unknown".to_string())
 }
 
 #[tauri::command]

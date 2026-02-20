@@ -401,7 +401,7 @@ pub fn parse_session_file(file_path: &Path) -> Option<(Session, HashMap<String, 
                 }
             }
 
-            if let Some(mut processed) = process_message(&entry) {
+            if let Some(processed) = process_message(&entry) {
                 // Store tool results from user messages
                 if entry_type == "user" {
                     for (tool_id, result) in &processed.tool_results {

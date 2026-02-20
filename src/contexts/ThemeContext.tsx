@@ -43,13 +43,16 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
 
     // Listen for theme changes via Tauri window
     let unlisten: (() => void) | null = null
+    let cancelled = false
     getCurrentWindow().onThemeChanged(({ payload }) => {
       setSystemTheme(payload === 'dark' ? 'dark' : 'light')
     }).then((fn) => {
-      unlisten = fn
+      if (cancelled) fn()
+      else unlisten = fn
     })
 
     return () => {
+      cancelled = true
       unlisten?.()
     }
   }, [])

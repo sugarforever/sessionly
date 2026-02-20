@@ -59,8 +59,9 @@ fn format_tool_use(tool: &ToolUseBlock, result: Option<&ToolResultBlock>) -> Str
         } else {
             serde_json::to_string(&result.content).unwrap_or_default()
         };
-        let truncated = if content.len() > 2000 {
-            format!("{}\n... (truncated)", &content[..2000])
+        let truncated = if content.chars().count() > 2000 {
+            let s: String = content.chars().take(2000).collect();
+            format!("{}\n... (truncated)", s)
         } else {
             content
         };

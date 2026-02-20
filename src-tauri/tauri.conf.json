@@ -20,7 +20,7 @@
       }
     ],
     "security": {
-      "csp": "default-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' asset: https://asset.localhost; connect-src ipc: http://ipc.localhost http://127.0.0.1:19823"
+      "csp": "default-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' asset: https://asset.localhost; connect-src ipc: http://ipc.localhost"
     },
     "trayIcon": {
       "iconPath": "icons/icon.png",
@@ -37,10 +37,7 @@
       "icons/icon.icns",
       "icons/icon.ico"
     ],
-    "macOS": {
-      "signingIdentity": "-",
-      "providerShortName": null
-    }
+    "macOS": {}
   },
   "plugins": {
     "updater": {

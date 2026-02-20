@@ -1,7 +1,6 @@
 use crate::session_monitor::SessionMonitor;
 use serde::{Deserialize, Serialize};
 use std::fs;
-use std::io::Read as _;
 use std::path::PathBuf;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
@@ -170,7 +169,7 @@ impl HookServer {
         let server_running = Arc::new(AtomicBool::new(true));
         let running = server_running.clone();
 
-        tokio::task::spawn_blocking(move || {
+        std::thread::spawn(move || {
             while running.load(Ordering::Relaxed) {
                 let mut request = match server.recv_timeout(std::time::Duration::from_secs(1)) {
                     Ok(Some(req)) => req,
@@ -188,7 +187,7 @@ impl HookServer {
                 }
 
                 let mut body = String::new();
-                if let Err(_) = request.as_reader().read_to_string(&mut body) {
+                if request.as_reader().read_to_string(&mut body).is_err() {
                     let response = tiny_http::Response::from_string("Bad Request")
                         .with_status_code(400);
                     let _ = request.respond(response);
