@@ -80,7 +80,7 @@ impl SessionMonitor {
         // Send notifications on transitions
         if self.notifications_enabled.load(Ordering::Relaxed) {
             match (prev_state, new_state) {
-                (SessionState::Working, SessionState::Completed) => {
+                (_, SessionState::Completed) if prev_state != SessionState::Completed => {
                     self.send_notification("Ready for Input", "Claude Code session completed.");
                 }
                 (_, SessionState::Error) if prev_state != SessionState::Error => {
