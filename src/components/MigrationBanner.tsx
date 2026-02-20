@@ -19,8 +19,8 @@ export function MigrationBanner() {
   }
 
   return (
-    <div className="relative z-50 flex items-center justify-between border-b border-amber-500/30 bg-amber-500/10 px-4 py-2">
-      <p className="text-sm text-amber-200">
+    <div className="relative z-50 flex items-center justify-between border-b border-amber-500/30 bg-amber-500/15 px-4 py-2">
+      <p className="text-sm text-amber-900 dark:text-amber-200">
         <span className="font-semibold">Sessionly v2 is here</span> — rebuilt with Tauri for a
         smaller, faster experience.
       </p>
