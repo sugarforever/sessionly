@@ -26,7 +26,6 @@ export const api = {
   hooksIsInstalled: () => invoke<boolean>('hooks_is_installed'),
 
   // Notifications
-  notificationsGetEnabled: () => invoke<boolean>('get_notifications_enabled'),
-  notificationsSetEnabled: (enabled: boolean) =>
-    invoke<void>('set_notifications_enabled', { enabled }),
+  sendNativeNotification: (title: string, body: string) =>
+    invoke<void>('send_native_notification', { title, body }),
 }

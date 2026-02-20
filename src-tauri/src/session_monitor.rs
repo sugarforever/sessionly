@@ -1,6 +1,5 @@
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
-use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Mutex;
 use std::time::Instant;
 use tauri::{AppHandle, Emitter};
@@ -17,14 +16,17 @@ pub enum SessionState {
 #[derive(Debug)]
 struct TrackedSession {
     state: SessionState,
+    cwd: Option<String>,
     last_update: Instant,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SessionStateInfo {
     pub session_id: String,
+    pub prev_state: SessionState,
     pub state: SessionState,
     pub aggregate_state: SessionState,
+    pub project: Option<String>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -38,15 +40,13 @@ pub struct HookEventPayload {
 pub struct SessionMonitor {
     sessions: Mutex<HashMap<String, TrackedSession>>,
     app_handle: AppHandle,
-    pub notifications_enabled: AtomicBool,
 }
 
 impl SessionMonitor {
-    pub fn new(app_handle: AppHandle, notifications_enabled: bool) -> Self {
+    pub fn new(app_handle: AppHandle) -> Self {
         Self {
             sessions: Mutex::new(HashMap::new()),
             app_handle,
-            notifications_enabled: AtomicBool::new(notifications_enabled),
         }
     }
 
@@ -58,42 +58,45 @@ impl SessionMonitor {
             _ => return,
         };
 
-        let (prev_state, aggregate) = {
+        let (prev_state, aggregate, cwd) = {
             let mut sessions = self.sessions.lock().unwrap();
             let prev_state = sessions
                 .get(&payload.session_id)
                 .map(|s| s.state)
                 .unwrap_or(SessionState::Idle);
 
+            // Update cwd only if the payload provides one
+            let cwd = payload
+                .cwd
+                .or_else(|| sessions.get(&payload.session_id).and_then(|s| s.cwd.clone()));
+
             sessions.insert(
                 payload.session_id.clone(),
                 TrackedSession {
                     state: new_state,
+                    cwd: cwd.clone(),
                     last_update: Instant::now(),
                 },
             );
 
             let aggregate = self.compute_aggregate(&sessions);
-            (prev_state, aggregate)
+            (prev_state, aggregate, cwd)
         }; // Lock dropped here before any I/O
 
-        // Send notifications on transitions
-        if self.notifications_enabled.load(Ordering::Relaxed) {
-            match (prev_state, new_state) {
-                (_, SessionState::Completed) if prev_state != SessionState::Completed => {
-                    self.send_notification("Ready for Input", "Claude Code session completed.");
-                }
-                (_, SessionState::Error) if prev_state != SessionState::Error => {
-                    self.send_notification("Error Occurred", "A tool error occurred in Claude Code.");
-                }
-                _ => {}
-            }
-        }
+        // Extract last path component as project name
+        let project = cwd.as_deref().and_then(|p| {
+            std::path::Path::new(p)
+                .file_name()
+                .and_then(|n| n.to_str())
+                .map(String::from)
+        });
 
         let info = SessionStateInfo {
             session_id: payload.session_id,
+            prev_state,
             state: new_state,
             aggregate_state: aggregate,
+            project,
         };
         let _ = self.app_handle.emit("session-state-changed", &info);
     }
@@ -121,14 +124,6 @@ impl SessionMonitor {
         } else {
             SessionState::Idle
         }
-    }
-
-    fn send_notification(&self, title: &str, body: &str) {
-        use tauri_plugin_notification::NotificationExt;
-        let _ = self.app_handle.notification().builder()
-            .title(title)
-            .body(body)
-            .show();
     }
 
     pub fn prune_stale(&self) {

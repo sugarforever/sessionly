@@ -1,4 +1,3 @@
-mod app_settings;
 mod commands;
 mod hooks;
 mod markdown_export;
@@ -11,7 +10,7 @@ use std::sync::Arc;
 use tauri::Manager;
 
 pub struct AppState {
-    pub session_monitor: Arc<SessionMonitor>, // Arc needed: shared with HookServer + pruning task
+    pub session_monitor: Arc<SessionMonitor>,
     pub hook_server: Option<hooks::HookServer>,
 }
 
@@ -21,21 +20,13 @@ pub fn run() {
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_shell::init())
         .plugin(tauri_plugin_dialog::init())
-        .plugin(tauri_plugin_notification::init())
         .plugin(tauri_plugin_fs::init())
         .plugin(tauri_plugin_process::init())
         .plugin(tauri_plugin_updater::Builder::new().build())
         .setup(|app| {
             let handle = app.handle().clone();
 
-            // Load settings
-            let settings = app_settings::load_settings(&handle);
-
-            // Create session monitor
-            let monitor = Arc::new(SessionMonitor::new(
-                handle.clone(),
-                settings.notifications_enabled,
-            ));
+            let monitor = Arc::new(SessionMonitor::new(handle.clone()));
 
             // Start hook server
             let hook_server = match hooks::HookServer::start(monitor.clone()) {
@@ -56,13 +47,11 @@ pub fn run() {
                 }
             }
 
-            // Start stale session pruning
+            // Prune stale sessions every 30s
             let monitor_prune = monitor.clone();
-            std::thread::spawn(move || {
-                loop {
-                    std::thread::sleep(std::time::Duration::from_secs(30));
-                    monitor_prune.prune_stale();
-                }
+            std::thread::spawn(move || loop {
+                std::thread::sleep(std::time::Duration::from_secs(30));
+                monitor_prune.prune_stale();
             });
 
             app.manage(AppState {
@@ -82,8 +71,7 @@ pub fn run() {
             commands::hooks_install,
             commands::hooks_uninstall,
             commands::hooks_is_installed,
-            commands::get_notifications_enabled,
-            commands::set_notifications_enabled,
+            commands::send_native_notification,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

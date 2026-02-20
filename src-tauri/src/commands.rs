@@ -1,7 +1,6 @@
 use crate::session_store;
 use crate::session_types::{ProjectGroup, Session};
 use crate::AppState;
-use std::sync::atomic::Ordering;
 use tauri::State;
 
 #[tauri::command]
@@ -68,27 +67,30 @@ pub fn hooks_is_installed() -> bool {
     crate::hooks::is_hooks_installed()
 }
 
-// Notification commands
 #[tauri::command]
-pub fn get_notifications_enabled(state: State<'_, AppState>) -> bool {
-    state
-        .session_monitor
-        .notifications_enabled
-        .load(Ordering::Relaxed)
-}
+pub fn send_native_notification(title: String, body: String) -> Result<(), String> {
+    #[cfg(target_os = "macos")]
+    {
+        let escaped_body = body.replace('\\', "\\\\").replace('"', "\\\"");
+        let escaped_title = title.replace('\\', "\\\\").replace('"', "\\\"");
+        std::process::Command::new("osascript")
+            .arg("-e")
+            .arg(format!(
+                "display notification \"{}\" with title \"{}\"",
+                escaped_body, escaped_title
+            ))
+            .output()
+            .map_err(|e| format!("osascript failed: {}", e))?;
+        return Ok(());
+    }
 
-#[tauri::command]
-pub fn set_notifications_enabled(
-    app: tauri::AppHandle,
-    state: State<'_, AppState>,
-    enabled: bool,
-) -> Result<(), String> {
-    state
-        .session_monitor
-        .notifications_enabled
-        .store(enabled, Ordering::Relaxed);
-
-    let mut settings = crate::app_settings::load_settings(&app);
-    settings.notifications_enabled = enabled;
-    crate::app_settings::save_settings(&app, &settings)
+    #[cfg(not(target_os = "macos"))]
+    {
+        notify_rust::Notification::new()
+            .summary(&title)
+            .body(&body)
+            .show()
+            .map_err(|e| e.to_string())?;
+        Ok(())
+    }
 }

@@ -1,29 +1,17 @@
-import { useEffect } from 'react'
 import { NavigationProvider } from './contexts/NavigationContext'
 import { Layout } from './components/Layout'
 import { PageRouter } from './components/PageRouter'
-import {
-  isPermissionGranted,
-  requestPermission,
-} from '@tauri-apps/plugin-notification'
+import { NotificationProvider } from './contexts/NotificationContext'
 
 function App() {
-  useEffect(() => {
-    async function ensureNotificationPermission() {
-      const granted = await isPermissionGranted()
-      if (!granted) {
-        await requestPermission()
-      }
-    }
-    ensureNotificationPermission().catch((e) => console.error('Notification permission error:', e))
-  }, [])
-
   return (
-    <NavigationProvider defaultPage="sessions">
-      <Layout>
-        <PageRouter />
-      </Layout>
-    </NavigationProvider>
+    <NotificationProvider>
+      <NavigationProvider defaultPage="sessions">
+        <Layout>
+          <PageRouter />
+        </Layout>
+      </NavigationProvider>
+    </NotificationProvider>
   )
 }
 

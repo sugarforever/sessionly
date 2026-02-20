@@ -1,19 +1,47 @@
-import { useEffect, useState, useCallback } from 'react'
+import { useEffect, useState, useCallback, useRef } from 'react'
 import { api } from '@/types/api'
 import type { HookStatus } from '@/types/session-types'
+import { useNotificationContext } from '@/contexts/NotificationContext'
+
+function Toggle({
+  checked,
+  onChange,
+  disabled,
+}: {
+  checked: boolean
+  onChange: () => void
+  disabled?: boolean
+}) {
+  return (
+    <button
+      role="switch"
+      aria-checked={checked}
+      onClick={onChange}
+      disabled={disabled}
+      className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+        disabled ? 'opacity-40 cursor-not-allowed' : ''
+      } ${checked ? 'bg-foreground' : 'bg-muted-foreground/30'}`}
+    >
+      <span
+        className={`inline-block h-4 w-4 rounded-full bg-background transition-transform ${
+          checked ? 'translate-x-6' : 'translate-x-1'
+        }`}
+      />
+    </button>
+  )
+}
 
 export function SettingsPage() {
   const [hookStatus, setHookStatus] = useState<HookStatus | null>(null)
-  const [notificationsEnabled, setNotificationsEnabled] = useState(true)
   const [loading, setLoading] = useState(false)
+  const [testResult, setTestResult] = useState<string | null>(null)
+  const testTimerRef = useRef<ReturnType<typeof setTimeout>>(undefined)
+
+  const { prefs, updatePrefs, sendTest } = useNotificationContext()
 
   const refresh = useCallback(async () => {
-    const [status, enabled] = await Promise.all([
-      api.hooksGetStatus(),
-      api.notificationsGetEnabled(),
-    ])
+    const status = await api.hooksGetStatus()
     setHookStatus(status)
-    setNotificationsEnabled(enabled)
   }, [])
 
   useEffect(() => {
@@ -34,11 +62,15 @@ export function SettingsPage() {
     }
   }
 
-  const handleNotificationToggle = async () => {
-    const newValue = !notificationsEnabled
-    setNotificationsEnabled(newValue)
-    await api.notificationsSetEnabled(newValue)
+  const handleTestNotification = async () => {
+    clearTimeout(testTimerRef.current)
+    setTestResult(null)
+    await sendTest()
+    setTestResult('Sent! Check Notification Center if you don\u2019t see it.')
+    testTimerRef.current = setTimeout(() => setTestResult(null), 6000)
   }
+
+  useEffect(() => () => clearTimeout(testTimerRef.current), [])
 
   return (
     <div className="space-y-8">
@@ -90,27 +122,58 @@ export function SettingsPage() {
       </div>
 
       {/* Notifications Section */}
-      <div className="rounded-lg border p-6 space-y-4">
-        <h2 className="text-xl font-semibold">Notifications</h2>
-        <p className="text-sm text-muted-foreground">
-          Receive native notifications when Claude Code sessions complete or encounter errors.
-        </p>
-        <div className="flex items-center gap-3">
-          <button
-            onClick={handleNotificationToggle}
-            className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
-              notificationsEnabled ? 'bg-foreground' : 'bg-muted-foreground/30'
-            }`}
-          >
-            <span
-              className={`inline-block h-4 w-4 rounded-full bg-background transition-transform ${
-                notificationsEnabled ? 'translate-x-6' : 'translate-x-1'
-              }`}
+      <div className="rounded-lg border p-6 space-y-5">
+        <div className="flex items-center justify-between">
+          <div>
+            <h2 className="text-xl font-semibold">Notifications</h2>
+            <p className="text-sm text-muted-foreground mt-1">
+              Receive native notifications when Claude Code sessions need your attention.
+            </p>
+          </div>
+          <Toggle checked={prefs.enabled} onChange={() => updatePrefs({ enabled: !prefs.enabled })} />
+        </div>
+
+        {/* Per-event toggles */}
+        <div className="space-y-3 pl-1">
+          <div className="flex items-center justify-between">
+            <div>
+              <span className="text-sm font-medium">Session completed</span>
+              <p className="text-xs text-muted-foreground">
+                Claude Code finished and is waiting for input
+              </p>
+            </div>
+            <Toggle
+              checked={prefs.showOnComplete}
+              onChange={() => updatePrefs({ showOnComplete: !prefs.showOnComplete })}
+              disabled={!prefs.enabled}
             />
+          </div>
+          <div className="flex items-center justify-between">
+            <div>
+              <span className="text-sm font-medium">Error occurred</span>
+              <p className="text-xs text-muted-foreground">
+                A tool error was detected in a session
+              </p>
+            </div>
+            <Toggle
+              checked={prefs.showOnError}
+              onChange={() => updatePrefs({ showOnError: !prefs.showOnError })}
+              disabled={!prefs.enabled}
+            />
+          </div>
+        </div>
+
+        {/* Test button */}
+        <div className="flex items-center gap-3 pt-2 border-t">
+          <button
+            onClick={handleTestNotification}
+            className="rounded border px-4 py-2 text-sm hover:bg-accent"
+          >
+            Send Test Notification
           </button>
-          <span className="text-sm">
-            {notificationsEnabled ? 'Enabled' : 'Disabled'}
-          </span>
+          {testResult && (
+            <span className="text-sm text-muted-foreground">{testResult}</span>
+          )}
         </div>
       </div>
     </div>

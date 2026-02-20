@@ -66,6 +66,9 @@ pub fn install_hooks() -> Result<(), Box<dyn std::error::Error>> {
         ("PostToolUseFailure", true),
         ("Stop", false),
         ("Notification", true),
+        ("SessionStart", false),
+        ("SessionEnd", false),
+        ("UserPromptSubmit", false),
     ];
 
     let hooks = settings
