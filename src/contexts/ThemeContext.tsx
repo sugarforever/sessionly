@@ -1,4 +1,6 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from 'react'
+import { api } from '@/types/api'
+import { getCurrentWindow } from '@tauri-apps/api/window'
 
 type Theme = 'light' | 'dark' | 'system'
 type ResolvedTheme = 'light' | 'dark'
@@ -30,34 +32,33 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
 
   const resolvedTheme: ResolvedTheme = theme === 'system' ? systemTheme : theme
 
-  // Get initial native theme and listen for changes via Electron IPC
   useEffect(() => {
-    // Get initial native theme
-    window.electron.getNativeTheme().then((response) => {
-      if (response.success && response.data) {
-        setSystemTheme(response.data)
-      }
+    // Get initial theme from Tauri
+    api.getNativeTheme().then((t) => {
+      setSystemTheme(t as ResolvedTheme)
+      setIsInitialized(true)
+    }).catch(() => {
       setIsInitialized(true)
     })
 
-    // Listen for native theme changes from main process
-    const unsubscribe = window.electron.onThemeChange((newTheme) => {
-      setSystemTheme(newTheme)
+    // Listen for theme changes via Tauri window
+    let unlisten: (() => void) | null = null
+    getCurrentWindow().onThemeChanged(({ payload }) => {
+      setSystemTheme(payload === 'dark' ? 'dark' : 'light')
+    }).then((fn) => {
+      unlisten = fn
     })
 
-    return unsubscribe
+    return () => {
+      unlisten?.()
+    }
   }, [])
 
-  // Apply theme class to document
   useEffect(() => {
     if (!isInitialized) return
-
     const root = document.documentElement
-
     root.classList.remove('light', 'dark')
     root.classList.add(resolvedTheme)
-
-    // Also set data attribute for potential CSS selectors
     root.setAttribute('data-theme', resolvedTheme)
   }, [resolvedTheme, isInitialized])
 

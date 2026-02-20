@@ -1,6 +1,6 @@
 import { RefreshCw, Loader2, Eye, EyeOff } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import type { ProjectGroup as ProjectGroupType } from '@/../electron/shared/types'
+import type { ProjectGroup as ProjectGroupType } from '@/types/session-types'
 import { ProjectGroup } from './ProjectGroup'
 
 interface SessionSidebarProps {
@@ -9,7 +9,6 @@ interface SessionSidebarProps {
   isLoading: boolean
   onSelectSession: (sessionId: string, projectEncoded: string) => void
   onRefresh: () => void
-  // Hidden state props
   showHidden: boolean
   hiddenCount: { projects: number; sessions: number }
   onToggleShowHidden: () => void
@@ -42,13 +41,11 @@ export function SessionSidebar({
 
   return (
     <div className="flex h-full flex-col border-r border-border bg-card">
-      {/* Header */}
       <div className="flex h-14 shrink-0 items-center justify-between border-b border-border px-4">
         <div className="min-w-0">
           <h2 className="text-sm font-semibold text-foreground">Sessions</h2>
           <p className="text-xs text-muted-foreground truncate">
             {totalSessions} in {projectGroups.length} project{projectGroups.length !== 1 ? 's' : ''}
-            {/* Use ternary for safer conditional rendering (rendering-conditional-render) */}
             {totalHidden > 0 && !showHidden ? (
               <span className="ml-1 opacity-60">({totalHidden} hidden)</span>
             ) : null}
@@ -85,8 +82,6 @@ export function SessionSidebar({
           </Button>
         </div>
       </div>
-
-      {/* Session List - Scrollable */}
       <div className="flex-1 overflow-y-auto scrollbar-thin">
         <div className="p-2">
           {isLoading && projectGroups.length === 0 ? (

@@ -1,177 +1,64 @@
 {
   "name": "sessionly",
-  "version": "1.1.1",
-  "description": "Desktop application for browsing and managing Claude Code CLI session history",
-  "main": "dist-electron/main/index.js",
-  "author": {
-    "name": "VerySmallWoods",
-    "email": "0001coder@gmail.com"
-  },
-  "license": "MIT",
   "private": true,
+  "version": "2.0.0",
+  "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "tsc && vite build && electron-builder",
-    "build:mac": "tsc && vite build && electron-builder --mac",
-    "build:win": "tsc && vite build && electron-builder --win",
-    "build:linux": "tsc && vite build && electron-builder --linux",
+    "build": "tsc && vite build",
     "preview": "vite preview",
-    "postinstall": "electron-rebuild",
-    "rebuild": "electron-rebuild",
+    "tauri": "tauri",
+    "typecheck": "tsc --noEmit",
     "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
     "lint:fix": "eslint . --ext ts,tsx --fix",
     "format": "prettier --write \"src/**/*.{ts,tsx,json,css}\"",
-    "format:check": "prettier --check \"src/**/*.{ts,tsx,json,css}\"",
-    "test": "vitest",
-    "test:ui": "vitest --ui",
-    "typecheck": "tsc --noEmit"
+    "format:check": "prettier --check \"src/**/*.{ts,tsx,json,css}\""
   },
   "dependencies": {
-    "@radix-ui/react-label": "^2.1.0",
+    "@radix-ui/react-label": "^2.1.8",
     "@radix-ui/react-progress": "^1.1.8",
     "@radix-ui/react-select": "^2.2.6",
-    "@radix-ui/react-slot": "^1.2.3",
-    "@radix-ui/react-tooltip": "^1.1.2",
-    "@reduxjs/toolkit": "^2.2.8",
-    "class-variance-authority": "^0.7.0",
+    "@radix-ui/react-slot": "^1.2.4",
+    "@radix-ui/react-tooltip": "^1.2.8",
+    "@reduxjs/toolkit": "^2.11.2",
+    "@tauri-apps/api": "^2",
+    "@tauri-apps/plugin-dialog": "^2.6.0",
+    "@tauri-apps/plugin-fs": "^2.4.5",
+    "@tauri-apps/plugin-notification": "^2.3.3",
+    "@tauri-apps/plugin-opener": "^2",
+    "@tauri-apps/plugin-process": "^2",
+    "@tauri-apps/plugin-updater": "^2",
+    "@tauri-apps/plugin-shell": "^2.3.5",
+    "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "date-fns": "^4.1.0",
-    "electron-log": "^5.4.3",
-    "electron-store": "^10.0.0",
-    "electron-updater": "^6.7.3",
     "highlight.js": "^11.11.1",
-    "lucide-react": "^0.441.0",
-    "node-pty": "^1.1.0",
-    "react": "^18.3.1",
-    "react-dom": "^18.3.1",
+    "lucide-react": "^0.575.0",
+    "react": "^19.1.0",
+    "react-dom": "^19.1.0",
     "react-markdown": "^10.1.0",
-    "react-redux": "^9.1.2",
+    "react-redux": "^9.2.0",
     "remark-gfm": "^4.0.1",
-    "tailwind-merge": "^2.5.2",
-    "tailwindcss-animate": "^1.0.7",
-    "uuid": "^13.0.0",
-    "xterm": "^5.3.0",
-    "xterm-addon-fit": "^0.8.0",
-    "xterm-addon-web-links": "^0.9.0"
+    "tailwind-merge": "^3.5.0",
+    "tailwindcss-animate": "^1.0.7"
   },
   "devDependencies": {
-    "@electron/notarize": "^3.1.1",
-    "@electron/rebuild": "^4.0.1",
-    "@testing-library/jest-dom": "^6.9.1",
-    "@testing-library/react": "^16.0.1",
-    "@testing-library/user-event": "^14.5.2",
-    "@types/node": "^22.7.5",
-    "@types/react": "^18.3.11",
-    "@types/react-dom": "^18.3.0",
-    "@types/uuid": "^10.0.0",
+    "@tauri-apps/cli": "^2",
+    "@types/node": "^25.3.0",
+    "@types/react": "^19.1.8",
+    "@types/react-dom": "^19.1.6",
     "@typescript-eslint/eslint-plugin": "^8.8.1",
     "@typescript-eslint/parser": "^8.8.1",
-    "@vitejs/plugin-react": "^4.3.2",
-    "@vitest/ui": "^2.1.2",
-    "autoprefixer": "^10.4.20",
-    "electron": "^32.2.0",
-    "electron-builder": "^25.1.7",
+    "@vitejs/plugin-react": "^4.6.0",
+    "autoprefixer": "^10.4.24",
     "eslint": "^8.57.1",
     "eslint-config-prettier": "^9.1.0",
     "eslint-plugin-react": "^7.37.1",
     "eslint-plugin-react-hooks": "^4.6.2",
-    "jsdom": "^25.0.1",
-    "postcss": "^8.4.47",
+    "postcss": "^8.5.6",
     "prettier": "^3.3.3",
-    "tailwindcss": "^3.4.13",
-    "typescript": "^5.6.3",
-    "vite": "^5.4.9",
-    "vite-plugin-electron": "^0.28.8",
-    "vite-plugin-electron-renderer": "^0.14.6",
-    "vitest": "^2.1.2"
-  },
-  "build": {
-    "appId": "app.sessionly",
-    "productName": "Sessionly",
-    "directories": {
-      "output": "release/${version}"
-    },
-    "files": [
-      "dist",
-      "dist-electron",
-      "!sessionly-web"
-    ],
-    "mac": {
-      "target": [
-        {
-          "target": "dmg",
-          "arch": [
-            "x64",
-            "arm64"
-          ]
-        },
-        {
-          "target": "zip",
-          "arch": [
-            "x64",
-            "arm64"
-          ]
-        }
-      ],
-      "category": "public.app-category.developer-tools",
-      "hardenedRuntime": true,
-      "gatekeeperAssess": false,
-      "entitlements": "build/entitlements.mac.plist",
-      "entitlementsInherit": "build/entitlements.mac.plist",
-      "signIgnore": [],
-      "type": "distribution"
-    },
-    "afterSign": "scripts/notarize.js",
-    "win": {
-      "target": [
-        {
-          "target": "nsis",
-          "arch": [
-            "x64"
-          ]
-        },
-        {
-          "target": "zip",
-          "arch": [
-            "x64"
-          ]
-        }
-      ]
-    },
-    "linux": {
-      "target": [
-        {
-          "target": "AppImage",
-          "arch": [
-            "x64",
-            "arm64"
-          ]
-        },
-        {
-          "target": "deb",
-          "arch": [
-            "x64",
-            "arm64"
-          ]
-        },
-        {
-          "target": "rpm",
-          "arch": [
-            "x64",
-            "arm64"
-          ]
-        }
-      ],
-      "category": "Development"
-    },
-    "nsis": {
-      "oneClick": false,
-      "allowToChangeInstallationDirectory": true
-    },
-    "publish": {
-      "provider": "github",
-      "owner": "sugarforever",
-      "repo": "sessionly"
-    }
+    "tailwindcss": "^3.4.19",
+    "typescript": "~5.8.3",
+    "vite": "^7.0.4"
   }
 }

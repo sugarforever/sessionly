@@ -1,9 +1,7 @@
-import { useState } from 'react'
 import { Loader2, MessageSquareOff } from 'lucide-react'
-import type { Session } from '@/../electron/shared/types'
+import type { Session } from '@/types/session-types'
 import { SessionHeader } from './SessionHeader'
 import { MessageList } from './MessageList'
-import { TerminalPanel } from './Terminal/TerminalPanel'
 
 interface SessionViewProps {
   session: Session | null
@@ -12,8 +10,6 @@ interface SessionViewProps {
 }
 
 export function SessionView({ session, isLoading, error }: SessionViewProps) {
-  const [showTerminal, setShowTerminal] = useState(false)
-
   if (isLoading) {
     return (
       <div className="flex h-full items-center justify-center bg-background">
@@ -57,24 +53,9 @@ export function SessionView({ session, isLoading, error }: SessionViewProps) {
 
   return (
     <div className="flex h-full flex-col bg-background">
-      <SessionHeader
-        session={session}
-        showTerminal={showTerminal}
-        onToggleTerminal={() => setShowTerminal(!showTerminal)}
-      />
-      <div className="flex flex-1 flex-col overflow-hidden">
-        <div className={`flex-1 overflow-hidden ${showTerminal ? 'h-1/2' : 'h-full'}`}>
-          <MessageList messages={session.messages} subagents={session.subagents} />
-        </div>
-        {showTerminal && (
-          <div className="h-1/2 min-h-[200px]">
-            <TerminalPanel
-              cwd={session.cwd}
-              sessionId={session.id}
-              onClose={() => setShowTerminal(false)}
-            />
-          </div>
-        )}
+      <SessionHeader session={session} />
+      <div className="flex-1 overflow-hidden">
+        <MessageList messages={session.messages} subagents={session.subagents} />
       </div>
     </div>
   )

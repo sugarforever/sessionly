@@ -1,23 +1,18 @@
 import { createSlice, createAsyncThunk, createSelector, type PayloadAction } from '@reduxjs/toolkit'
-import type { Session, ProjectGroup } from '@/../electron/shared/types'
+import type { Session, ProjectGroup } from '@/types/session-types'
 import type { RootState } from '@/store'
+import { api } from '@/types/api'
 
-// Debounced localStorage persistence to prevent blocking UI on rapid state changes
 const pendingPersists: Map<string, { value: string; timeout: ReturnType<typeof setTimeout> }> =
   new Map()
 const PERSIST_DEBOUNCE_MS = 300
 
 function debouncedPersist(key: string, value: unknown) {
-  // Serialize value immediately to avoid Immer proxy issues
   const serialized = JSON.stringify(value)
-
-  // Clear any pending timeout for this key
   const pending = pendingPersists.get(key)
   if (pending) {
     clearTimeout(pending.timeout)
   }
-
-  // Schedule persistence asynchronously
   const timeout = setTimeout(() => {
     try {
       localStorage.setItem(key, serialized)
@@ -26,7 +21,6 @@ function debouncedPersist(key: string, value: unknown) {
     }
     pendingPersists.delete(key)
   }, PERSIST_DEBOUNCE_MS)
-
   pendingPersists.set(key, { value: serialized, timeout })
 }
 
@@ -38,13 +32,11 @@ interface SessionsState {
   isLoading: boolean
   isLoadingSession: boolean
   error: string | null
-  // Hidden state
   hiddenProjects: string[]
   hiddenSessions: string[]
   showHidden: boolean
 }
 
-// Load hidden state from localStorage
 const loadHiddenState = (): {
   hiddenProjects: string[]
   hiddenSessions: string[]
@@ -76,43 +68,40 @@ const initialState: SessionsState = {
   showHidden: hiddenState.showHidden,
 }
 
-// Async thunk to fetch all sessions
 export const fetchSessions = createAsyncThunk(
   'sessions/fetchAll',
   async (_, { rejectWithValue }) => {
-    const response = await window.electron.sessionsGetAll()
-    if (!response.success) {
-      return rejectWithValue(response.error || 'Failed to fetch sessions')
+    try {
+      return await api.sessionsGetAll()
+    } catch (error) {
+      return rejectWithValue(error instanceof Error ? error.message : 'Failed to fetch sessions')
     }
-    return response.data
   }
 )
 
-// Async thunk to fetch a single session
 export const fetchSession = createAsyncThunk(
   'sessions/fetchOne',
   async (
     { sessionId, projectEncoded }: { sessionId: string; projectEncoded: string },
     { rejectWithValue }
   ) => {
-    const response = await window.electron.sessionsGet(sessionId, projectEncoded)
-    if (!response.success) {
-      return rejectWithValue(response.error || 'Failed to fetch session')
+    try {
+      return await api.sessionsGet(sessionId, projectEncoded)
+    } catch (error) {
+      return rejectWithValue(error instanceof Error ? error.message : 'Failed to fetch session')
     }
-    return response.data
   }
 )
 
-// Async thunk to refresh sessions
 export const refreshSessions = createAsyncThunk(
   'sessions/refresh',
   async (_, { dispatch, rejectWithValue }) => {
-    const response = await window.electron.sessionsRefresh()
-    if (!response.success) {
-      return rejectWithValue(response.error || 'Failed to refresh sessions')
+    try {
+      await api.sessionsRefresh()
+      dispatch(fetchSessions())
+    } catch (error) {
+      return rejectWithValue(error instanceof Error ? error.message : 'Failed to refresh sessions')
     }
-    // After refresh, fetch updated sessions
-    dispatch(fetchSessions())
   }
 )
 
@@ -139,7 +128,6 @@ const sessionsSlice = createSlice({
     clearError: (state) => {
       state.error = null
     },
-    // Hidden state actions - use debounced persistence to avoid UI blocking
     hideProject: (state, action: PayloadAction<string>) => {
       if (!state.hiddenProjects.includes(action.payload)) {
         state.hiddenProjects.push(action.payload)
@@ -167,7 +155,6 @@ const sessionsSlice = createSlice({
   },
   extraReducers: (builder) => {
     builder
-      // fetchSessions
       .addCase(fetchSessions.pending, (state) => {
         state.isLoading = true
         state.error = null
@@ -180,7 +167,6 @@ const sessionsSlice = createSlice({
         state.isLoading = false
         state.error = action.payload as string
       })
-      // fetchSession
       .addCase(fetchSession.pending, (state) => {
         state.isLoadingSession = true
         state.error = null
@@ -193,7 +179,6 @@ const sessionsSlice = createSlice({
         state.isLoadingSession = false
         state.error = action.payload as string
       })
-      // refreshSessions
       .addCase(refreshSessions.pending, (state) => {
         state.isLoading = true
         state.error = null
@@ -217,7 +202,6 @@ export const {
 } = sessionsSlice.actions
 export default sessionsSlice.reducer
 
-// Selectors - memoized with createSelector
 const selectProjectGroups = (state: RootState) => state.sessions.projectGroups
 const selectHiddenProjects = (state: RootState) => state.sessions.hiddenProjects
 const selectHiddenSessions = (state: RootState) => state.sessions.hiddenSessions
@@ -227,7 +211,6 @@ export const selectVisibleProjectGroups = createSelector(
   [selectProjectGroups, selectHiddenProjects, selectHiddenSessions, selectShowHidden],
   (projectGroups, hiddenProjects, hiddenSessions, showHidden): ProjectGroup[] => {
     if (showHidden) return projectGroups
-
     return projectGroups
       .filter((group) => !hiddenProjects.includes(group.projectEncoded))
       .map((group) => ({

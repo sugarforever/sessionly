@@ -1,7 +1,7 @@
 import { useMemo } from 'react'
 import { format } from 'date-fns'
 import { MessageSquare, GitBranch, Eye, EyeOff } from 'lucide-react'
-import type { SessionSummary } from '@/../electron/shared/types'
+import type { SessionSummary } from '@/types/session-types'
 
 interface SessionItemProps {
   session: SessionSummary
@@ -22,21 +22,12 @@ export function SessionItem({
 }: SessionItemProps) {
   const formattedDate = useMemo(() => {
     if (!session.startTime) return null
-
     const date = new Date(session.startTime)
     const now = new Date()
     const msPerDay = 1000 * 60 * 60 * 24
     const daysSinceSession = Math.floor((now.getTime() - date.getTime()) / msPerDay)
-
-    const isToday = daysSinceSession === 0
-    const isWithinWeek = daysSinceSession < 7
-
-    if (isToday) {
-      return format(date, 'HH:mm')
-    }
-    if (isWithinWeek) {
-      return format(date, 'EEE HH:mm')
-    }
+    if (daysSinceSession === 0) return format(date, 'HH:mm')
+    if (daysSinceSession < 7) return format(date, 'EEE HH:mm')
     return format(date, 'MMM d')
   }, [session.startTime])
 
@@ -66,9 +57,7 @@ export function SessionItem({
     >
       <div className="flex items-start justify-between gap-2">
         <div className="flex-1 min-w-0">
-          <p
-            className={`text-xs truncate ${isSelected ? 'text-foreground' : 'text-muted-foreground'}`}
-          >
+          <p className={`text-xs truncate ${isSelected ? 'text-foreground' : 'text-muted-foreground'}`}>
             {preview}
           </p>
           <div className="mt-1.5 flex items-center gap-2 text-[10px] text-muted-foreground/60">
@@ -97,9 +86,7 @@ export function SessionItem({
             )}
           </button>
           {formattedDate && (
-            <span className="text-[10px] text-muted-foreground/50 tabular-nums">
-              {formattedDate}
-            </span>
+            <span className="text-[10px] text-muted-foreground/50 tabular-nums">{formattedDate}</span>
           )}
         </div>
       </div>

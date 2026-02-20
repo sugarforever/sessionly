@@ -1,83 +1,67 @@
 import { useEffect, useState } from 'react'
 import { Button } from '@/components/ui/button'
-import { Progress } from '@/components/ui/progress'
 import { X, Download, RefreshCw } from 'lucide-react'
-import type { UpdateInfo, UpdateProgress } from '@/../electron/shared/types'
+import { check } from '@tauri-apps/plugin-updater'
+import { relaunch } from '@tauri-apps/plugin-process'
 
-type UpdateStatus = 'idle' | 'checking' | 'available' | 'downloading' | 'downloaded' | 'error'
+type UpdateStatus = 'idle' | 'checking' | 'available' | 'downloading' | 'ready' | 'error'
 
 export function UpdateNotification() {
   const [status, setStatus] = useState<UpdateStatus>('idle')
-  const [updateInfo, setUpdateInfo] = useState<UpdateInfo | null>(null)
-  const [progress, setProgress] = useState<UpdateProgress | null>(null)
+  const [version, setVersion] = useState<string>('')
+  const [progress, setProgress] = useState(0)
   const [error, setError] = useState<string | null>(null)
   const [dismissed, setDismissed] = useState(false)
+  const [update, setUpdate] = useState<Awaited<ReturnType<typeof check>> | null>(null)
 
   useEffect(() => {
-    const unsubChecking = window.electron.onUpdateChecking(() => {
-      setStatus('checking')
-    })
-
-    const unsubAvailable = window.electron.onUpdateAvailable((info) => {
-      setStatus('available')
-      setUpdateInfo(info)
-      setDismissed(false)
-    })
-
-    const unsubNotAvailable = window.electron.onUpdateNotAvailable(() => {
-      setStatus('idle')
-    })
-
-    const unsubProgress = window.electron.onUpdateProgress((prog) => {
-      setStatus('downloading')
-      setProgress(prog)
-    })
-
-    const unsubDownloaded = window.electron.onUpdateDownloaded((info) => {
-      setStatus('downloaded')
-      setUpdateInfo(info)
-      setProgress(null)
-    })
-
-    const unsubError = window.electron.onUpdateError((err) => {
-      setStatus('error')
-      setError(err)
-    })
-
-    return () => {
-      unsubChecking()
-      unsubAvailable()
-      unsubNotAvailable()
-      unsubProgress()
-      unsubDownloaded()
-      unsubError()
+    async function checkForUpdate() {
+      try {
+        setStatus('checking')
+        const result = await check()
+        if (result) {
+          setUpdate(result)
+          setVersion(result.version)
+          setStatus('available')
+        } else {
+          setStatus('idle')
+        }
+      } catch (e) {
+        setStatus('error')
+        setError(e instanceof Error ? e.message : 'Failed to check for updates')
+      }
     }
+    checkForUpdate()
   }, [])
 
   const handleDownload = async () => {
-    setStatus('downloading')
-    setProgress({ percent: 0, bytesPerSecond: 0, transferred: 0, total: 0 })
-    await window.electron.downloadUpdate()
+    if (!update) return
+    try {
+      setStatus('downloading')
+      let totalBytes = 0
+      let downloadedBytes = 0
+      await update.downloadAndInstall((event) => {
+        if (event.event === 'Started' && event.data.contentLength) {
+          totalBytes = event.data.contentLength
+        } else if (event.event === 'Progress') {
+          downloadedBytes += event.data.chunkLength
+          if (totalBytes > 0) setProgress(Math.round((downloadedBytes / totalBytes) * 100))
+        } else if (event.event === 'Finished') {
+          setStatus('ready')
+        }
+      })
+      setStatus('ready')
+    } catch (e) {
+      setStatus('error')
+      setError(e instanceof Error ? e.message : 'Download failed')
+    }
   }
 
-  const handleInstall = () => {
-    window.electron.installUpdate()
+  const handleRelaunch = async () => {
+    await relaunch()
   }
 
-  const handleDismiss = () => {
-    setDismissed(true)
-  }
-
-  const handleCheckAgain = async () => {
-    setError(null)
-    setStatus('checking')
-    await window.electron.checkForUpdates()
-  }
-
-  // Don't show notification for idle, checking, or dismissed states
-  if (status === 'idle' || status === 'checking' || dismissed) {
-    return null
-  }
+  if (status === 'idle' || status === 'checking' || dismissed) return null
 
   return (
     <div className="fixed bottom-4 right-4 z-50 w-80 rounded-lg border bg-background p-4 shadow-lg">
@@ -87,35 +71,24 @@ export function UpdateNotification() {
             <>
               <h4 className="font-semibold">Update Available</h4>
               <p className="mt-1 text-sm text-muted-foreground">
-                Version {updateInfo?.version} is ready to download
+                Version {version} is ready to download
               </p>
             </>
           )}
-
           {status === 'downloading' && (
             <>
               <h4 className="font-semibold">Downloading Update</h4>
-              <p className="mt-1 text-sm text-muted-foreground">Version {updateInfo?.version}</p>
-              {progress && (
-                <div className="mt-3">
-                  <Progress value={progress.percent} className="h-2" />
-                  <p className="mt-1 text-xs text-muted-foreground">
-                    {Math.round(progress.percent)}% complete
-                  </p>
-                </div>
-              )}
+              <p className="mt-1 text-sm text-muted-foreground">{progress}% complete</p>
             </>
           )}
-
-          {status === 'downloaded' && (
+          {status === 'ready' && (
             <>
               <h4 className="font-semibold">Ready to Install</h4>
               <p className="mt-1 text-sm text-muted-foreground">
-                Version {updateInfo?.version} has been downloaded
+                Version {version} has been downloaded
               </p>
             </>
           )}
-
           {status === 'error' && (
             <>
               <h4 className="font-semibold text-destructive">Update Error</h4>
@@ -123,14 +96,15 @@ export function UpdateNotification() {
             </>
           )}
         </div>
-
         {status !== 'downloading' && (
-          <button onClick={handleDismiss} className="ml-2 rounded-sm opacity-70 hover:opacity-100">
+          <button
+            onClick={() => setDismissed(true)}
+            className="ml-2 rounded-sm opacity-70 hover:opacity-100"
+          >
             <X className="h-4 w-4" />
           </button>
         )}
       </div>
-
       <div className="mt-3 flex gap-2">
         {status === 'available' && (
           <Button onClick={handleDownload} size="sm" className="gap-1">
@@ -138,23 +112,14 @@ export function UpdateNotification() {
             Download
           </Button>
         )}
-
-        {status === 'downloaded' && (
-          <Button onClick={handleInstall} size="sm" className="gap-1">
+        {status === 'ready' && (
+          <Button onClick={handleRelaunch} size="sm" className="gap-1">
             <RefreshCw className="h-3 w-3" />
             Restart & Install
           </Button>
         )}
-
-        {status === 'error' && (
-          <Button onClick={handleCheckAgain} size="sm" variant="outline" className="gap-1">
-            <RefreshCw className="h-3 w-3" />
-            Try Again
-          </Button>
-        )}
-
-        {(status === 'available' || status === 'downloaded') && (
-          <Button variant="ghost" size="sm" onClick={handleDismiss}>
+        {(status === 'available' || status === 'ready') && (
+          <Button variant="ghost" size="sm" onClick={() => setDismissed(true)}>
             Later
           </Button>
         )}

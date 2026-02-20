@@ -18,11 +18,9 @@
     "noFallthroughCasesInSwitch": true,
     "baseUrl": ".",
     "paths": {
-      "@/*": ["./src/*"],
-      "@main/*": ["./electron/main/*"],
-      "@preload/*": ["./electron/preload/*"]
+      "@/*": ["./src/*"]
     }
   },
-  "include": ["src", "electron"],
+  "include": ["src"],
   "references": [{ "path": "./tsconfig.node.json" }]
 }

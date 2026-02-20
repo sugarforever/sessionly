@@ -6,6 +6,7 @@ import { useTheme } from '@/contexts/ThemeContext'
 import { Button } from '@/components/ui/button'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import { PanelLeftClose, PanelLeft, Sun, Moon, Monitor } from 'lucide-react'
+import { api } from '@/types/api'
 import iconPng from '/icon.png'
 
 interface SidebarProps {
@@ -19,20 +20,13 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
   const [version, setVersion] = useState<string>('')
 
   useEffect(() => {
-    async function fetchVersion() {
-      const response = await window.electron.getVersion()
-      if (response.success && response.data) {
-        setVersion(response.data)
-      }
-    }
-    fetchVersion()
+    api.getVersion().then(setVersion).catch(() => {})
   }, [])
 
   const cycleTheme = () => {
     const themes: Array<'system' | 'light' | 'dark'> = ['system', 'light', 'dark']
     const currentIndex = themes.indexOf(theme)
-    const nextIndex = (currentIndex + 1) % themes.length
-    setTheme(themes[nextIndex])
+    setTheme(themes[(currentIndex + 1) % themes.length])
   }
 
   const ThemeIcon = theme === 'system' ? Monitor : theme === 'light' ? Sun : Moon
@@ -45,99 +39,84 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
         collapsed ? 'w-16' : 'w-56'
       )}
     >
-      {/* Header with toggle */}
-      <div className="flex h-14 items-center justify-between border-b border-border px-3">
-        {!collapsed && (
-          <div className="flex items-center gap-2">
-            <img src={iconPng} alt="Sessionly" className="h-6 w-6 rounded" />
+      {/* Header */}
+      <div className="flex h-14 items-center justify-between px-4 border-b border-border">
+        <div className="flex items-center gap-2 min-w-0">
+          <img src={iconPng} alt="Sessionly" className="h-6 w-6 rounded-lg shrink-0" />
+          {!collapsed && (
             <span className="text-sm font-semibold text-foreground truncate">Sessionly</span>
-          </div>
-        )}
+          )}
+        </div>
         <Button
           variant="ghost"
           size="icon"
           onClick={onToggle}
-          className={cn(
-            'h-8 w-8 text-muted-foreground hover:text-foreground hover:bg-accent',
-            collapsed && 'mx-auto'
-          )}
+          className="h-7 w-7 shrink-0 text-muted-foreground hover:text-foreground"
         >
           {collapsed ? <PanelLeft className="h-4 w-4" /> : <PanelLeftClose className="h-4 w-4" />}
         </Button>
       </div>
 
-      {/* Navigation Items */}
-      <nav className="flex-1 p-2">
+      {/* Navigation */}
+      <nav className="flex-1 p-2 space-y-1">
         <TooltipProvider delayDuration={0}>
-          <div className="space-y-1">
-            {navigationItems.map((item) => (
-              <div key={item.id}>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Button
-                      variant="ghost"
-                      className={cn(
-                        'w-full transition-colors duration-150',
-                        collapsed ? 'justify-center px-2' : 'justify-start px-3',
-                        currentPage === item.id
-                          ? 'bg-accent text-accent-foreground hover:bg-accent'
-                          : 'text-muted-foreground hover:text-foreground hover:bg-accent',
-                        item.disabled && 'cursor-not-allowed opacity-50'
-                      )}
-                      onClick={() => !item.disabled && navigateTo(item.id)}
-                      disabled={item.disabled}
-                    >
-                      <item.icon className={cn('h-4 w-4 shrink-0', !collapsed && 'mr-3')} />
-                      {!collapsed && <span className="truncate text-sm">{item.label}</span>}
-                    </Button>
-                  </TooltipTrigger>
-                  {collapsed && (
-                    <TooltipContent
-                      side="right"
-                      className="bg-popover text-popover-foreground border-border"
-                    >
-                      <p>{item.label}</p>
-                    </TooltipContent>
-                  )}
-                </Tooltip>
-              </div>
-            ))}
-          </div>
+          {navigationItems.map((item) => {
+            const isActive = currentPage === item.id
+            const Icon = item.icon
+            return (
+              <Tooltip key={item.id}>
+                <TooltipTrigger asChild>
+                  <button
+                    onClick={() => navigateTo(item.id)}
+                    disabled={item.disabled}
+                    className={cn(
+                      'flex w-full items-center gap-3 rounded-md px-3 py-2 text-sm transition-colors cursor-pointer',
+                      isActive
+                        ? 'bg-accent text-foreground font-medium'
+                        : 'text-muted-foreground hover:bg-accent hover:text-foreground',
+                      item.disabled && 'opacity-50 cursor-not-allowed'
+                    )}
+                  >
+                    <Icon className="h-4 w-4 shrink-0" />
+                    {!collapsed && <span className="truncate">{item.label}</span>}
+                  </button>
+                </TooltipTrigger>
+                {collapsed && (
+                  <TooltipContent side="right">
+                    <p>{item.label}</p>
+                  </TooltipContent>
+                )}
+              </Tooltip>
+            )
+          })}
         </TooltipProvider>
       </nav>
 
-      {/* Footer - Theme toggle & Version */}
-      <div className="border-t border-border p-2">
+      {/* Footer */}
+      <div className="border-t border-border p-2 space-y-1">
         <TooltipProvider delayDuration={0}>
-          <div
-            className={cn(
-              'flex items-center',
-              collapsed ? 'justify-center' : 'justify-between px-1'
-            )}
-          >
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={cycleTheme}
-                  className="h-8 w-8 text-muted-foreground hover:text-foreground hover:bg-accent"
-                >
-                  <ThemeIcon className="h-4 w-4" />
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent
-                side={collapsed ? 'right' : 'top'}
-                className="bg-popover text-popover-foreground border-border"
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <button
+                onClick={cycleTheme}
+                className="flex w-full items-center gap-3 rounded-md px-3 py-2 text-sm text-muted-foreground hover:bg-accent hover:text-foreground transition-colors cursor-pointer"
               >
-                <p>Theme: {themeLabel}</p>
+                <ThemeIcon className="h-4 w-4 shrink-0" />
+                {!collapsed && <span className="truncate">{themeLabel}</span>}
+              </button>
+            </TooltipTrigger>
+            {collapsed && (
+              <TooltipContent side="right">
+                <p>{themeLabel} theme</p>
               </TooltipContent>
-            </Tooltip>
-            {!collapsed && (
-              <span className="text-xs text-muted-foreground font-mono">v{version || '1.0.0'}</span>
             )}
-          </div>
+          </Tooltip>
         </TooltipProvider>
+        {!collapsed && version && (
+          <div className="px-3 py-1">
+            <span className="text-[10px] text-muted-foreground/50 font-mono">v{version}</span>
+          </div>
+        )}
       </div>
     </aside>
   )

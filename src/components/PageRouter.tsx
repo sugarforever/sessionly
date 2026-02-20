@@ -1,18 +1,13 @@
+import React from 'react'
 import { useNavigation } from '@/contexts/NavigationContext'
 import { SessionsPage } from '@/features/sessions/SessionsPage'
 import { AboutPage } from '@/pages/AboutPage'
+import { SettingsPage } from '@/pages/SettingsPage'
 import type { PageId } from '@/config/navigation'
 
-/**
- * Page Router
- *
- * Maps page IDs to their corresponding components.
- * When adding a new page:
- * 1. Import the page component
- * 2. Add it to the pageComponents map with the same ID from navigation config
- */
-const pageComponents: Record<PageId, () => JSX.Element> = {
+const pageComponents: Record<PageId, () => React.JSX.Element> = {
   sessions: SessionsPage,
+  settings: SettingsPage,
   about: AboutPage,
 }
 

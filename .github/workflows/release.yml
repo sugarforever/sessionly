@@ -18,9 +18,22 @@ on:
 
 jobs:
   test:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
     steps:
       - uses: actions/checkout@v4
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Rust cache
+        uses: swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri
+
+      - name: Install system deps
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -31,13 +44,10 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Run type check
+      - name: TypeScript check
         run: npm run typecheck
 
-      - name: Run tests
-        run: npm test
-
-      - name: Run linter
+      - name: Lint
         run: npm run lint
 
   version-bump:
@@ -66,7 +76,7 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
 
-      - name: Bump version
+      - name: Bump version (package.json)
         id: version
         run: |
           npm version ${{ inputs.version_type }} --no-git-tag-version
@@ -74,21 +84,59 @@ jobs:
           echo "new_version=$NEW_VERSION" >> $GITHUB_OUTPUT
           echo "tag_name=v$NEW_VERSION" >> $GITHUB_OUTPUT
 
+      - name: Bump version (tauri.conf.json)
+        run: |
+          cd src-tauri
+          sed -i 's/"version": "[^"]*"/"version": "${{ steps.version.outputs.new_version }}"/' tauri.conf.json
+
+      - name: Bump version (Cargo.toml)
+        run: |
+          cd src-tauri
+          sed -i 's/^version = "[^"]*"/version = "${{ steps.version.outputs.new_version }}"/' Cargo.toml
+
       - name: Commit and tag
         run: |
-          git add package.json package-lock.json
+          git add package.json package-lock.json src-tauri/tauri.conf.json src-tauri/Cargo.toml src-tauri/Cargo.lock
           git commit -m "chore: bump version to v${{ steps.version.outputs.new_version }}"
           git tag "v${{ steps.version.outputs.new_version }}"
           git push origin main --tags
 
-  build-macos:
+  build:
     needs: [test, version-bump]
     if: always() && needs.test.result == 'success' && (needs.version-bump.result == 'success' || needs.version-bump.result == 'skipped')
-    runs-on: macos-latest
+    permissions:
+      contents: write
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: macos-latest
+            args: '--target universal-apple-darwin'
+          - os: ubuntu-22.04
+            args: ''
+          - os: windows-latest
+            args: ''
+    runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
         with:
           ref: ${{ needs.version-bump.outputs.tag_name || github.ref }}
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.os == 'macos-latest' && 'aarch64-apple-darwin,x86_64-apple-darwin' || '' }}
+
+      - name: Rust cache
+        uses: swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri
+
+      - name: Install system deps (Linux)
+        if: matrix.os == 'ubuntu-22.04'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -96,205 +144,46 @@ jobs:
           node-version: '20'
           cache: 'npm'
 
-      - name: Setup Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: '3.12'
-
-      - name: Install setuptools (for node-gyp)
-        run: pip install setuptools
-
       - name: Install dependencies
         run: npm ci
 
-      - name: Import Code Signing Certificate
+      - name: Import macOS certificate
+        if: matrix.os == 'macos-latest'
         env:
           CERTIFICATE_P12_BASE64: ${{ secrets.MAC_CERTIFICATE_P12_BASE64 }}
           CERTIFICATE_PASSWORD: ${{ secrets.MAC_CERTIFICATE_PASSWORD }}
           KEYCHAIN_PASSWORD: ${{ github.run_id }}
         run: |
-          # Skip if certificate is not provided
           if [ -z "$CERTIFICATE_P12_BASE64" ]; then
-            echo "No certificate provided, skipping code signing setup"
+            echo "No certificate provided, skipping"
             exit 0
           fi
-
-          # Create a temporary keychain
           KEYCHAIN_PATH=$RUNNER_TEMP/app-signing.keychain-db
           security create-keychain -p "$KEYCHAIN_PASSWORD" $KEYCHAIN_PATH
           security set-keychain-settings -lut 21600 $KEYCHAIN_PATH
           security unlock-keychain -p "$KEYCHAIN_PASSWORD" $KEYCHAIN_PATH
-
-          # Import certificate to keychain
           echo "$CERTIFICATE_P12_BASE64" | base64 --decode > $RUNNER_TEMP/certificate.p12
           security import $RUNNER_TEMP/certificate.p12 -P "$CERTIFICATE_PASSWORD" -A -t cert -f pkcs12 -k $KEYCHAIN_PATH
           security set-key-partition-list -S apple-tool:,apple: -k "$KEYCHAIN_PASSWORD" $KEYCHAIN_PATH
           security list-keychain -d user -s $KEYCHAIN_PATH
-
-          # List available signing identities for debugging
-          echo "Available signing identities:"
-          security find-identity -v -p codesigning $KEYCHAIN_PATH
-
-          # Verify we have a Developer ID Application certificate
-          if ! security find-identity -v -p codesigning $KEYCHAIN_PATH | grep -q "Developer ID Application"; then
-            echo "WARNING: No 'Developer ID Application' certificate found!"
-            echo "Notarization requires a Developer ID Application certificate, not a Mac App Store certificate."
-            echo "Please export the correct certificate from Keychain Access."
-          fi
-
-          # Clean up
           rm $RUNNER_TEMP/certificate.p12
 
-      - name: Build for macOS (Universal - Intel + Apple Silicon)
-        run: npm run build:mac
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          APPLE_ID: ${{ secrets.APPLE_ID }}
-          APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
-          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
-
-      - name: Upload macOS artifacts
-        uses: actions/upload-artifact@v4
-        with:
-          name: release-macos
-          path: |
-            release/**/*.dmg
-            release/**/*.zip
-            release/**/*.yml
-            release/**/*.yaml
-            release/**/*.blockmap
-          if-no-files-found: warn
-
-  build-windows:
-    needs: [test, version-bump]
-    if: always() && needs.test.result == 'success' && (needs.version-bump.result == 'success' || needs.version-bump.result == 'skipped')
-    runs-on: windows-latest
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          ref: ${{ needs.version-bump.outputs.tag_name || github.ref }}
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-          cache: 'npm'
-
-      - name: Setup Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: '3.12'
-
-      - name: Install setuptools (for node-gyp)
-        run: pip install setuptools
-
-      - name: Install dependencies
-        run: npm ci
-
-      - name: Build for Windows
-        run: npm run build:win
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Upload Windows artifacts
-        uses: actions/upload-artifact@v4
-        with:
-          name: release-windows
-          path: |
-            release/**/*.exe
-            release/**/*.zip
-            release/**/*.yml
-            release/**/*.yaml
-            release/**/*.blockmap
-          if-no-files-found: warn
-
-  build-linux:
-    needs: [test, version-bump]
-    if: always() && needs.test.result == 'success' && (needs.version-bump.result == 'success' || needs.version-bump.result == 'skipped')
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          ref: ${{ needs.version-bump.outputs.tag_name || github.ref }}
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-          cache: 'npm'
-
-      - name: Install dependencies
-        run: npm ci
-
-      - name: Build for Linux
-        run: npm run build:linux
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Upload Linux artifacts
-        uses: actions/upload-artifact@v4
-        with:
-          name: release-linux
-          path: |
-            release/**/*.AppImage
-            release/**/*.deb
-            release/**/*.rpm
-            release/**/*.zip
-            release/**/*.yml
-            release/**/*.yaml
-            release/**/*.blockmap
-          if-no-files-found: warn
-
-  publish-release:
-    needs: [version-bump, build-macos, build-windows, build-linux]
-    if: always() && (needs.build-macos.result == 'success' || needs.build-windows.result == 'success' || needs.build-linux.result == 'success')
-    runs-on: ubuntu-latest
-    permissions:
-      contents: write
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Download all artifacts
-        uses: actions/download-artifact@v4
-        with:
-          path: artifacts
-
-      - name: Display downloaded artifacts
-        run: find artifacts -type f -name "*" | head -50
-
-      - name: Clean up duplicate yml files
-        run: |
-          # Remove debug and app-update yml files (not needed, cause duplicates)
-          find artifacts -name "builder-debug.yml" -delete
-          find artifacts -name "app-update.yml" -delete
-          # Show remaining yml files
-          echo "Remaining yml files:"
-          find artifacts -name "*.yml" -o -name "*.yaml"
-
-      - name: Get version info
-        id: version_info
-        run: |
-          if [ "${{ github.event_name }}" == "workflow_dispatch" ]; then
-            echo "tag_name=${{ needs.version-bump.outputs.tag_name }}" >> $GITHUB_OUTPUT
-          else
-            echo "tag_name=${{ github.ref_name }}" >> $GITHUB_OUTPUT
-          fi
-
-      - name: Create GitHub Release
-        uses: softprops/action-gh-release@v2
-        with:
-          tag_name: ${{ steps.version_info.outputs.tag_name }}
-          name: Sessionly ${{ steps.version_info.outputs.tag_name }}
-          generate_release_notes: true
-          files: |
-            artifacts/**/*.dmg
-            artifacts/**/Sessionly Setup*.exe
-            artifacts/**/*.AppImage
-            artifacts/**/*.deb
-            artifacts/**/*.rpm
-            artifacts/**/*.zip
-            artifacts/**/*.yml
-            artifacts/**/*.yaml
-            artifacts/**/*.blockmap
+      - name: Build Tauri app
+        uses: tauri-apps/tauri-action@v0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+          APPLE_CERTIFICATE: ${{ secrets.MAC_CERTIFICATE_P12_BASE64 }}
+          APPLE_CERTIFICATE_PASSWORD: ${{ secrets.MAC_CERTIFICATE_PASSWORD }}
+          APPLE_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+        with:
+          tagName: ${{ needs.version-bump.outputs.tag_name || github.ref_name }}
+          releaseName: 'Sessionly ${{ needs.version-bump.outputs.tag_name || github.ref_name }}'
+          releaseBody: ''
+          releaseDraft: false
+          prerelease: false
+          args: ${{ matrix.args }}

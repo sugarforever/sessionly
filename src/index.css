@@ -6,64 +6,45 @@
 
 @layer base {
   :root {
-    /* Minimalist Black & White Theme */
     --background: 0 0% 100%;
     --foreground: 0 0% 10%;
-
     --card: 0 0% 98%;
     --card-foreground: 0 0% 10%;
-
     --popover: 0 0% 100%;
     --popover-foreground: 0 0% 10%;
-
     --primary: 0 0% 10%;
     --primary-foreground: 0 0% 98%;
-
     --secondary: 0 0% 95%;
     --secondary-foreground: 0 0% 10%;
-
     --muted: 0 0% 95%;
     --muted-foreground: 0 0% 45%;
-
     --accent: 0 0% 92%;
     --accent-foreground: 0 0% 10%;
-
     --destructive: 0 84.2% 60.2%;
     --destructive-foreground: 0 0% 98%;
-
     --border: 0 0% 90%;
     --input: 0 0% 90%;
     --ring: 0 0% 20%;
-
     --radius: 0.5rem;
   }
 
   .dark {
-    /* OLED Dark Theme - True blacks with subtle zinc accents */
     --background: 0 0% 4%;
     --foreground: 0 0% 90%;
-
     --card: 0 0% 6%;
     --card-foreground: 0 0% 90%;
-
     --popover: 0 0% 6%;
     --popover-foreground: 0 0% 90%;
-
     --primary: 0 0% 90%;
     --primary-foreground: 0 0% 4%;
-
     --secondary: 0 0% 10%;
     --secondary-foreground: 0 0% 80%;
-
     --muted: 0 0% 10%;
     --muted-foreground: 0 0% 50%;
-
     --accent: 0 0% 12%;
     --accent-foreground: 0 0% 90%;
-
     --destructive: 0 62.8% 30.6%;
     --destructive-foreground: 0 0% 95%;
-
     --border: 0 0% 14%;
     --input: 0 0% 14%;
     --ring: 0 0% 70%;
@@ -76,9 +57,7 @@
   }
   body {
     @apply bg-background text-foreground;
-    font-feature-settings:
-      'rlig' 1,
-      'calt' 1;
+    font-feature-settings: 'rlig' 1, 'calt' 1;
     font-synthesis: none;
     text-rendering: optimizeLegibility;
     -webkit-font-smoothing: antialiased;
@@ -86,91 +65,11 @@
   }
 }
 
-/* Custom scrollbar styling - Light mode */
-::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
-}
+::-webkit-scrollbar { width: 8px; height: 8px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: hsl(0 0% 80%); border-radius: 4px; }
+::-webkit-scrollbar-thumb:hover { background: hsl(0 0% 70%); }
+.dark ::-webkit-scrollbar-thumb { background: hsl(0 0% 20%); }
+.dark ::-webkit-scrollbar-thumb:hover { background: hsl(0 0% 30%); }
 
-::-webkit-scrollbar-track {
-  background: transparent;
-}
-
-::-webkit-scrollbar-thumb {
-  background: hsl(0 0% 80%);
-  border-radius: 4px;
-}
-
-::-webkit-scrollbar-thumb:hover {
-  background: hsl(0 0% 70%);
-}
-
-/* Custom scrollbar styling - Dark mode */
-.dark ::-webkit-scrollbar-thumb {
-  background: hsl(0 0% 20%);
-}
-
-.dark ::-webkit-scrollbar-thumb:hover {
-  background: hsl(0 0% 30%);
-}
-
-/* Thin scrollbar utility class - Light mode */
-.scrollbar-thin::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
-}
-
-.scrollbar-thin::-webkit-scrollbar-track {
-  background: transparent;
-}
-
-.scrollbar-thin::-webkit-scrollbar-thumb {
-  background: hsl(0 0% 75%);
-  border-radius: 3px;
-}
-
-.scrollbar-thin::-webkit-scrollbar-thumb:hover {
-  background: hsl(0 0% 65%);
-}
-
-/* Thin scrollbar utility class - Dark mode */
-.dark .scrollbar-thin::-webkit-scrollbar-thumb {
-  background: hsl(0 0% 25%);
-}
-
-.dark .scrollbar-thin::-webkit-scrollbar-thumb:hover {
-  background: hsl(0 0% 35%);
-}
-
-/* Custom thumb and track colors */
-.scrollbar-thumb-zinc-700::-webkit-scrollbar-thumb {
-  background: hsl(0 0% 27%);
-}
-
-.scrollbar-thumb-zinc-800::-webkit-scrollbar-thumb {
-  background: hsl(0 0% 20%);
-}
-
-.scrollbar-track-transparent::-webkit-scrollbar-track {
-  background: transparent;
-}
-
-/* Thinner scrollbar for textarea - Light mode */
-textarea::-webkit-scrollbar {
-  width: 6px;
-}
-
-textarea::-webkit-scrollbar-track {
-  background: transparent;
-  margin: 2px;
-}
-
-textarea::-webkit-scrollbar-thumb {
-  background: hsl(0 0% 75%);
-  border-radius: 3px;
-}
-
-/* Thinner scrollbar for textarea - Dark mode */
-.dark textarea::-webkit-scrollbar-thumb {
-  background: hsl(0 0% 25%);
-}
+.scrollbar-thin::-webkit-scrollbar { width: 6px; }

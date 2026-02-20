@@ -1,42 +1,31 @@
-import { defineConfig } from 'vite'
-import react from '@vitejs/plugin-react'
-import electron from 'vite-plugin-electron/simple'
-import path from 'node:path'
+import { defineConfig } from "vite";
+import react from "@vitejs/plugin-react";
+import path from "node:path";
 
-export default defineConfig({
-  plugins: [
-    react(),
-    electron({
-      main: {
-        entry: 'electron/main/index.ts',
-        vite: {
-          build: {
-            outDir: 'dist-electron/main',
-            rollupOptions: {
-              external: ['better-sqlite3', 'node-pty'],
-            },
-          },
-        },
-      },
-      preload: {
-        input: 'electron/preload/index.ts',
-        vite: {
-          build: {
-            outDir: 'dist-electron/preload',
-          },
-        },
-      },
-      renderer: {},
-    }),
-  ],
+// @ts-expect-error process is a nodejs global
+const host = process.env.TAURI_DEV_HOST;
+
+export default defineConfig(async () => ({
+  plugins: [react()],
   resolve: {
     alias: {
-      '@': path.resolve(__dirname, './src'),
-      '@main': path.resolve(__dirname, './electron/main'),
-      '@preload': path.resolve(__dirname, './electron/preload'),
+      "@": path.resolve(__dirname, "./src"),
     },
   },
+  clearScreen: false,
   server: {
-    port: 5173,
+    port: 1420,
+    strictPort: true,
+    host: host || false,
+    hmr: host
+      ? {
+          protocol: "ws",
+          host,
+          port: 1421,
+        }
+      : undefined,
+    watch: {
+      ignored: ["**/src-tauri/**"],
+    },
   },
-})
+}));

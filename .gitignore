@@ -11,6 +11,12 @@ node_modules
 dist
 dist-electron
 release
+data/
+DESIGN_DOC.md
+
+# Rust / Tauri
+src-tauri/target/
+src-tauri/gen/
 
 # Editor directories and files
 .vscode/*
@@ -27,16 +33,6 @@ release
 .env
 .env.local
 
-# Database (SQLite)
-*.db
-*.db-journal
-*.db-shm
-*.db-wal
-data/
-
-# Drizzle migrations metadata (migrations SQL should be committed)
-# drizzle/meta/
-
 # Testing
 coverage
 *.lcov
@@ -44,13 +40,9 @@ coverage
 # OS
 Thumbs.db
 
-DESIGN_DOC.md
-
-.vscode
-
-# Local symlinks
-sessionly-web
+# Archives
+sessionly-tauri/
+sessionly-macos/
+sessionly-web/
 debug/
-
-# Promo video project
 promo-video/

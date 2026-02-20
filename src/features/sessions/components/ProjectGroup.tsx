@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { ChevronDown, ChevronRight, Folder, Eye, EyeOff } from 'lucide-react'
-import type { ProjectGroup as ProjectGroupType } from '@/../electron/shared/types'
+import type { ProjectGroup as ProjectGroupType } from '@/types/session-types'
 import { SessionItem } from './SessionItem'
 
 interface ProjectGroupProps {
@@ -29,8 +29,6 @@ export function ProjectGroup({
   hiddenSessions,
 }: ProjectGroupProps) {
   const [expanded, setExpanded] = useState(defaultExpanded)
-
-  // Get short project name (last folder)
   const shortName = group.project.split('/').pop() || group.project
 
   const handleHideClick = (e: React.MouseEvent) => {
@@ -44,7 +42,6 @@ export function ProjectGroup({
 
   return (
     <div className="mb-1">
-      {/* Header */}
       <div
         className={`group flex w-full items-center gap-1.5 px-2 py-1.5 rounded-md hover:bg-accent/50 transition-all duration-150 ${
           isHidden ? 'opacity-50 border-l-2 border-l-amber-400/50' : ''
@@ -62,10 +59,7 @@ export function ProjectGroup({
           <Folder
             className={`h-3.5 w-3.5 shrink-0 ${isHidden ? 'text-amber-400/70' : 'text-muted-foreground/60'}`}
           />
-          <span
-            className="text-xs font-medium text-muted-foreground truncate"
-            title={group.project}
-          >
+          <span className="text-xs font-medium text-muted-foreground truncate" title={group.project}>
             {shortName}
           </span>
         </button>
@@ -84,8 +78,6 @@ export function ProjectGroup({
           {group.sessions.length}
         </span>
       </div>
-
-      {/* Sessions */}
       {expanded && (
         <div className="ml-3 mt-0.5 space-y-0.5 border-l border-border pl-2">
           {group.sessions.map((session) => (
