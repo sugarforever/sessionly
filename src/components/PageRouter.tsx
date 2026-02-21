@@ -1,12 +1,14 @@
 import React from 'react'
 import { useNavigation } from '@/contexts/NavigationContext'
+import { HomePage } from '@/features/home/HomePage'
 import { SessionsPage } from '@/features/sessions/SessionsPage'
 import { AboutPage } from '@/pages/AboutPage'
 import { SettingsPage } from '@/pages/SettingsPage'
 import type { PageId } from '@/config/navigation'
 
 const pageComponents: Record<PageId, () => React.JSX.Element> = {
-  sessions: SessionsPage,
+  home: HomePage,
+  history: SessionsPage,
   settings: SettingsPage,
   about: AboutPage,
 }

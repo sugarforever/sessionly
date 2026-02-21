@@ -3,9 +3,13 @@ import { cn } from '@/lib/utils'
 import { navigationItems } from '@/config/navigation'
 import { useNavigation } from '@/contexts/NavigationContext'
 import { useTheme } from '@/contexts/ThemeContext'
-import { Button } from '@/components/ui/button'
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
-import { PanelLeftClose, PanelLeft, Sun, Moon, Monitor } from 'lucide-react'
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@/components/ui/tooltip'
+import { Sun, Moon, Monitor } from 'lucide-react'
 import { api } from '@/types/api'
 import iconPng from '/icon.png'
 
@@ -35,86 +39,112 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
   return (
     <aside
       className={cn(
-        'flex h-screen flex-col border-r border-border bg-card transition-all duration-300 ease-in-out',
-        collapsed ? 'w-16' : 'w-56'
+        'flex h-screen flex-col border-r border-border/60 bg-card transition-[width] duration-200 ease-out',
+        collapsed ? 'w-[52px]' : 'w-52',
       )}
     >
-      {/* Header */}
-      <div className="flex h-14 items-center justify-between px-4 border-b border-border">
-        <div className="flex items-center gap-2 min-w-0">
-          <img src={iconPng} alt="Sessionly" className="h-6 w-6 rounded-lg shrink-0" />
-          {!collapsed && (
-            <span className="text-sm font-semibold text-foreground truncate">Sessionly</span>
+      {/* Branding */}
+      <button
+        onClick={onToggle}
+        className={cn(
+          'flex shrink-0 items-center gap-2.5 transition-all duration-200 cursor-pointer',
+          'hover:bg-accent/60 active:bg-accent',
+          collapsed ? 'justify-center px-0 py-4' : 'px-4 py-4',
+        )}
+      >
+        <img
+          src={iconPng}
+          alt="Sessionly"
+          className="h-6 w-6 shrink-0 rounded-[6px]"
+        />
+        <span
+          className={cn(
+            'text-[13px] font-semibold tracking-tight text-foreground transition-opacity duration-200',
+            collapsed ? 'sr-only' : 'opacity-100',
           )}
-        </div>
-        <Button
-          variant="ghost"
-          size="icon"
-          onClick={onToggle}
-          className="h-7 w-7 shrink-0 text-muted-foreground hover:text-foreground"
         >
-          {collapsed ? <PanelLeft className="h-4 w-4" /> : <PanelLeftClose className="h-4 w-4" />}
-        </Button>
-      </div>
+          Sessionly
+        </span>
+      </button>
 
       {/* Navigation */}
-      <nav className="flex-1 p-2 space-y-1">
-        <TooltipProvider delayDuration={0}>
+      <nav className="flex-1 px-2 pt-1">
+        <TooltipProvider delayDuration={300}>
           {navigationItems.map((item) => {
             const isActive = currentPage === item.id
             const Icon = item.icon
+
             return (
-              <Tooltip key={item.id}>
-                <TooltipTrigger asChild>
-                  <button
-                    onClick={() => navigateTo(item.id)}
-                    disabled={item.disabled}
-                    className={cn(
-                      'flex w-full items-center gap-3 rounded-md px-3 py-2 text-sm transition-colors cursor-pointer',
-                      isActive
-                        ? 'bg-accent text-foreground font-medium'
-                        : 'text-muted-foreground hover:bg-accent hover:text-foreground',
-                      item.disabled && 'opacity-50 cursor-not-allowed'
-                    )}
-                  >
-                    <Icon className="h-4 w-4 shrink-0" />
-                    {!collapsed && <span className="truncate">{item.label}</span>}
-                  </button>
-                </TooltipTrigger>
-                {collapsed && (
-                  <TooltipContent side="right">
-                    <p>{item.label}</p>
-                  </TooltipContent>
+              <div key={item.id}>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <button
+                      onClick={() => navigateTo(item.id)}
+                      disabled={item.disabled}
+                      className={cn(
+                        'relative flex w-full items-center gap-2.5 rounded-md py-1.5 text-[13px] transition-colors duration-150 cursor-pointer',
+                        collapsed ? 'justify-center px-0' : 'px-2.5',
+                        isActive
+                          ? 'bg-accent text-foreground font-medium'
+                          : 'text-muted-foreground hover:bg-accent/60 hover:text-foreground',
+                        item.disabled && 'pointer-events-none opacity-40',
+                      )}
+                    >
+                      <Icon
+                        className="h-4 w-4 shrink-0"
+                        strokeWidth={isActive ? 2.25 : 1.75}
+                      />
+                      {!collapsed && (
+                        <span className="truncate">{item.label}</span>
+                      )}
+                    </button>
+                  </TooltipTrigger>
+                  {collapsed && (
+                    <TooltipContent side="right" sideOffset={8}>
+                      {item.label}
+                    </TooltipContent>
+                  )}
+                </Tooltip>
+
+                {/* Divider after item */}
+                {item.divider && (
+                  <div className="my-2 mx-2 border-t border-border/50" />
                 )}
-              </Tooltip>
+              </div>
             )
           })}
         </TooltipProvider>
       </nav>
 
       {/* Footer */}
-      <div className="border-t border-border p-2 space-y-1">
-        <TooltipProvider delayDuration={0}>
+      <div className="px-2 pb-3 pt-1">
+        <TooltipProvider delayDuration={300}>
           <Tooltip>
             <TooltipTrigger asChild>
               <button
                 onClick={cycleTheme}
-                className="flex w-full items-center gap-3 rounded-md px-3 py-2 text-sm text-muted-foreground hover:bg-accent hover:text-foreground transition-colors cursor-pointer"
+                className={cn(
+                  'flex w-full items-center gap-2.5 rounded-md py-1.5 text-[13px] text-muted-foreground transition-colors duration-150 cursor-pointer',
+                  'hover:bg-accent/60 hover:text-foreground',
+                  collapsed ? 'justify-center px-0' : 'px-2.5',
+                )}
               >
-                <ThemeIcon className="h-4 w-4 shrink-0" />
+                <ThemeIcon className="h-4 w-4 shrink-0" strokeWidth={1.75} />
                 {!collapsed && <span className="truncate">{themeLabel}</span>}
               </button>
             </TooltipTrigger>
             {collapsed && (
-              <TooltipContent side="right">
-                <p>{themeLabel} theme</p>
+              <TooltipContent side="right" sideOffset={8}>
+                {themeLabel} theme
               </TooltipContent>
             )}
           </Tooltip>
         </TooltipProvider>
         {!collapsed && version && (
-          <div className="px-3 py-1">
-            <span className="text-[10px] text-muted-foreground/50 font-mono">v{version}</span>
+          <div className="mt-1 px-2.5">
+            <span className="text-[10px] tabular-nums text-muted-foreground/40">
+              v{version}
+            </span>
           </div>
         )}
       </div>

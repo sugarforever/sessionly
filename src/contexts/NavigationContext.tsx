@@ -15,7 +15,7 @@ interface NavigationProviderProps {
 
 export function NavigationProvider({
   children,
-  defaultPage = 'sessions',
+  defaultPage = 'home',
 }: NavigationProviderProps) {
   const [currentPage, setCurrentPage] = useState<PageId>(defaultPage)
 

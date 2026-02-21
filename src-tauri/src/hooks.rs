@@ -8,6 +8,29 @@ use std::sync::Arc;
 const HOOK_IDENTIFIER: &str = "localhost:19823/sessionly";
 const HOOK_COMMAND: &str = "curl -s -X POST http://localhost:19823/sessionly -d @- || true";
 
+/// Check if a hook entry (flat or nested format) contains the Sessionly identifier.
+fn entry_contains_identifier(item: &serde_json::Value) -> bool {
+    if let Some(obj) = item.as_object() {
+        // Flat format: { "command": "curl ... localhost:19823/sessionly ..." }
+        if let Some(cmd) = obj.get("command").and_then(|c| c.as_str()) {
+            if cmd.contains(HOOK_IDENTIFIER) {
+                return true;
+            }
+        }
+        // Nested format: { "hooks": [{ "command": "curl ..." }], "matcher": "..." }
+        if let Some(hooks_arr) = obj.get("hooks").and_then(|h| h.as_array()) {
+            for hook in hooks_arr {
+                if let Some(cmd) = hook.get("command").and_then(|c| c.as_str()) {
+                    if cmd.contains(HOOK_IDENTIFIER) {
+                        return true;
+                    }
+                }
+            }
+        }
+    }
+    false
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct HookStatus {
     #[serde(rename = "serverRunning")]
@@ -87,18 +110,8 @@ pub fn install_hooks() -> Result<(), Box<dyn std::error::Error>> {
             .or_insert(serde_json::json!([]));
         let arr = event_hooks.as_array_mut().ok_or("event hooks is not an array")?;
 
-        // Check if Sessionly hook already exists
-        let already_exists = arr.iter().any(|item| {
-            if let Some(obj) = item.as_object() {
-                if let Some(cmd) = obj.get("command") {
-                    return cmd
-                        .as_str()
-                        .map(|s| s.contains(HOOK_IDENTIFIER))
-                        .unwrap_or(false);
-                }
-            }
-            false
-        });
+        // Check if Sessionly hook already exists (flat or nested format)
+        let already_exists = arr.iter().any(entry_contains_identifier);
 
         if !already_exists {
             let mut entry = serde_json::json!({
@@ -132,14 +145,7 @@ pub fn uninstall_hooks() -> Result<(), Box<dyn std::error::Error>> {
     if let Some(hooks) = settings.get_mut("hooks").and_then(|h| h.as_object_mut()) {
         for (_event, entries) in hooks.iter_mut() {
             if let Some(arr) = entries.as_array_mut() {
-                arr.retain(|item| {
-                    if let Some(obj) = item.as_object() {
-                        if let Some(cmd) = obj.get("command").and_then(|c| c.as_str()) {
-                            return !cmd.contains(HOOK_IDENTIFIER);
-                        }
-                    }
-                    true
-                });
+                arr.retain(|item| !entry_contains_identifier(item));
             }
         }
 
