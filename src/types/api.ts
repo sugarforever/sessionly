@@ -25,7 +25,4 @@ export const api = {
   hooksUninstall: () => invoke<void>('hooks_uninstall'),
   hooksIsInstalled: () => invoke<boolean>('hooks_is_installed'),
 
-  // Notifications
-  sendNativeNotification: (title: string, body: string) =>
-    invoke<void>('send_native_notification', { title, body }),
 }

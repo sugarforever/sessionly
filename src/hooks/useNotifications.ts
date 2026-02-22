@@ -1,6 +1,11 @@
 import { useEffect, useRef, useCallback, useState } from 'react'
 import { listen } from '@tauri-apps/api/event'
-import { api } from '@/types/api'
+import {
+  isPermissionGranted,
+  requestPermission,
+  sendNotification,
+} from '@tauri-apps/plugin-notification'
+import { invoke } from '@tauri-apps/api/core'
 
 interface SessionStateEvent {
   session_id: string
@@ -38,11 +43,32 @@ function savePrefs(prefs: NotificationPrefs) {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(prefs))
 }
 
+async function ensurePermission(): Promise<boolean> {
+  let granted = await isPermissionGranted()
+  if (!granted) {
+    const result = await requestPermission()
+    granted = result === 'granted'
+  }
+  return granted
+}
+
 async function notify(title: string, body: string) {
   try {
-    await api.sendNativeNotification(title, body)
+    const granted = await ensurePermission()
+    console.log('[notification] permission granted:', granted)
+    if (granted) {
+      sendNotification({ title, body })
+      console.log('[notification] sent via plugin')
+      return
+    }
+  } catch (err) {
+    console.warn('[notification] plugin failed, using fallback:', err)
+  }
+  try {
+    await invoke('send_native_notification', { title, body })
+    console.log('[notification] sent via osascript fallback')
   } catch (e) {
-    console.error('[notification] Failed:', e)
+    console.error('[notification] all methods failed:', e)
   }
 }
 
@@ -64,17 +90,27 @@ export function useNotifications() {
   }, [])
 
   // Listen for session state changes and fire notifications
+  // Cooldown per session to avoid rapid-fire duplicates (e.g. completed→working→completed)
   useEffect(() => {
+    const cooldowns = new Map<string, number>()
+    const COOLDOWN_MS = 5_000
+
     const unlisten = listen<SessionStateEvent>('session-state-changed', (event) => {
       const p = prefsRef.current
       if (!p.enabled) return
 
-      const { prev_state, state, project } = event.payload
-      const ctx = project ? ` \u2014 ${project}` : ''
+      const { session_id, state, project } = event.payload
+      const now = Date.now()
+      const key = `${session_id}:${state}`
+      const lastFired = cooldowns.get(key) ?? 0
 
-      if (state === 'completed' && prev_state !== 'completed' && p.showOnComplete) {
+      if (now - lastFired < COOLDOWN_MS) return
+
+      if (state === 'completed' && p.showOnComplete) {
+        cooldowns.set(key, now)
         notify('Session Completed', project || 'Ready for input')
-      } else if (state === 'error' && prev_state !== 'error' && p.showOnError) {
+      } else if (state === 'error' && p.showOnError) {
+        cooldowns.set(key, now)
         notify('Tool Error', project || 'Error in session')
       }
     })
