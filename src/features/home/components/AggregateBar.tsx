@@ -12,24 +12,19 @@ export function AggregateBar({ activeCount, isQuiet, totalProjects }: AggregateB
       <div className="flex items-center gap-2.5">
         <span
           className={cn(
-            'h-2 w-2 rounded-full transition-colors duration-300',
+            'h-2 w-2 rounded-full',
             isQuiet
-              ? 'bg-muted-foreground/30'
+              ? 'bg-muted-foreground/40'
               : 'bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.5)]',
           )}
         />
-        <span
-          className={cn(
-            'text-[13px] font-medium tracking-tight transition-colors duration-200',
-            isQuiet ? 'text-muted-foreground' : 'text-foreground',
-          )}
-        >
+        <span className="text-sm font-medium text-foreground">
           {isQuiet ? 'All quiet' : `${activeCount} active`}
         </span>
       </div>
 
       {totalProjects > 0 && (
-        <span className="text-xs tabular-nums text-muted-foreground/60">
+        <span className="text-xs text-muted-foreground">
           {totalProjects} project{totalProjects !== 1 ? 's' : ''}
         </span>
       )}

@@ -8,8 +8,7 @@ export function HomePage() {
 
   return (
     <div className="flex h-full flex-col overflow-hidden">
-      {/* Status header */}
-      <div className="shrink-0 border-b px-5 py-3">
+      <div className="shrink-0 border-b px-6 py-4">
         <AggregateBar
           activeCount={aggregateActive}
           isQuiet={aggregateQuiet}
@@ -17,12 +16,11 @@ export function HomePage() {
         />
       </div>
 
-      {/* Project list */}
-      <div className="flex-1 overflow-y-auto scrollbar-thin">
+      <div className="flex-1 overflow-y-auto scrollbar-thin p-4">
         {projects.length === 0 ? (
           <EmptyState />
         ) : (
-          <div className="p-2 space-y-0.5">
+          <div className="grid gap-3 grid-cols-1 lg:grid-cols-2">
             {projects.map((p) => (
               <ProjectCard key={p.project} project={p} />
             ))}

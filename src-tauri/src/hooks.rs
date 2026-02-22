@@ -80,18 +80,17 @@ pub fn install_hooks() -> Result<(), Box<dyn std::error::Error>> {
         serde_json::json!({})
     };
 
-    // Claude Code hook format: each event has an array of hook objects
-    // Hook object: { "type": "command", "command": "...", "async": true, "timeout": 5 }
-    // Stop has no matcher; all others get "matcher": "*"
+    // New Claude Code hook format: { "matcher": "...", "hooks": [{ "type": "command", ... }] }
+    // Events with matchers use "*" to match all tools
     let hook_events = vec![
-        ("PreToolUse", true),
-        ("PostToolUse", true),
-        ("PostToolUseFailure", true),
-        ("Stop", false),
-        ("Notification", true),
-        ("SessionStart", false),
-        ("SessionEnd", false),
-        ("UserPromptSubmit", false),
+        ("PreToolUse", Some("*")),
+        ("PostToolUse", Some("*")),
+        ("PostToolUseFailure", Some("*")),
+        ("Stop", None),
+        ("Notification", Some("*")),
+        ("SessionStart", None),
+        ("SessionEnd", None),
+        ("UserPromptSubmit", None),
     ];
 
     let hooks = settings
@@ -104,7 +103,7 @@ pub fn install_hooks() -> Result<(), Box<dyn std::error::Error>> {
         .as_object_mut()
         .ok_or("hooks is not an object")?;
 
-    for (event_name, has_matcher) in hook_events {
+    for (event_name, matcher) in hook_events {
         let event_hooks = hooks_obj
             .entry(event_name)
             .or_insert(serde_json::json!([]));
@@ -114,14 +113,17 @@ pub fn install_hooks() -> Result<(), Box<dyn std::error::Error>> {
         let already_exists = arr.iter().any(entry_contains_identifier);
 
         if !already_exists {
-            let mut entry = serde_json::json!({
+            let hook_obj = serde_json::json!({
                 "type": "command",
                 "command": HOOK_COMMAND,
                 "async": true,
                 "timeout": 5
             });
-            if has_matcher {
-                entry.as_object_mut().unwrap().insert("matcher".to_string(), serde_json::json!("*"));
+            let mut entry = serde_json::json!({
+                "hooks": [hook_obj]
+            });
+            if let Some(m) = matcher {
+                entry.as_object_mut().unwrap().insert("matcher".to_string(), serde_json::json!(m));
             }
             arr.push(entry);
         }

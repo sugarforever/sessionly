@@ -7,7 +7,7 @@ export function stateToColor(state: string): string {
     case 'error':
       return 'bg-red-500'
     default:
-      return 'bg-muted-foreground/40'
+      return 'bg-muted-foreground/50'
   }
 }
 
