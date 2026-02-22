@@ -108,10 +108,12 @@ export function useNotifications() {
 
       if (state === 'completed' && p.showOnComplete) {
         cooldowns.set(key, now)
-        notify('Session Completed', project || 'Ready for input')
+        const name = project || 'Claude Code'
+        notify(`${name} needs your attention`, 'Session is waiting for your input')
       } else if (state === 'error' && p.showOnError) {
         cooldowns.set(key, now)
-        notify('Tool Error', project || 'Error in session')
+        const name = project || 'Claude Code'
+        notify(`${name} hit an error`, 'A tool failed — check the session')
       }
     })
 
