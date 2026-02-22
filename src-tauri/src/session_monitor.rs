@@ -54,7 +54,7 @@ impl SessionMonitor {
         let new_state = match payload.hook_event_name.as_str() {
             "PreToolUse" | "PostToolUse" => SessionState::Working,
             "PostToolUseFailure" => SessionState::Error,
-            "Stop" | "Notification" => SessionState::Completed,
+            "Stop" => SessionState::Completed,
             _ => return,
         };
 
