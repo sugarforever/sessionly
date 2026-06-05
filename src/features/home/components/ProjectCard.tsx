@@ -8,7 +8,9 @@ interface ProjectCardProps {
   project: ProjectState
 }
 
-function collapseEvents(events: SessionEvent[]): { state: string; count: number; timestamp: number }[] {
+function collapseEvents(
+  events: SessionEvent[]
+): { state: string; count: number; timestamp: number }[] {
   const groups: { state: string; count: number; timestamp: number }[] = []
   for (const e of events) {
     const last = groups[groups.length - 1]
@@ -24,14 +26,15 @@ function collapseEvents(events: SessionEvent[]): { state: string; count: number;
 export function ProjectCard({ project }: ProjectCardProps) {
   const pastEvents = project.events.slice(1, 8)
   const collapsed = collapseEvents(pastEvents)
-  const hasTransitions = collapsed.length > 0 && !(collapsed.length === 1 && collapsed[0].state === project.latestState)
+  const hasTransitions =
+    collapsed.length > 0 && !(collapsed.length === 1 && collapsed[0].state === project.latestState)
   const isWorking = project.latestState === 'working'
 
   return (
     <div
       className={cn(
         'rounded-lg border bg-card p-4 transition-colors duration-200 hover:border-border/80 hover:bg-accent/30',
-        project.isStale && 'opacity-50',
+        project.isStale && 'opacity-50'
       )}
     >
       {/* Header: icon + project name */}
@@ -41,15 +44,13 @@ export function ProjectCard({ project }: ProjectCardProps) {
             <FolderOpen className="h-4 w-4 text-muted-foreground" strokeWidth={1.75} />
           </div>
           <div className="min-w-0">
-            <p className="truncate text-sm font-semibold text-foreground">
-              {project.project}
-            </p>
+            <p className="truncate text-sm font-semibold text-foreground">{project.project}</p>
             <div className="flex items-center gap-1.5 mt-0.5">
               <span
                 className={cn(
                   'h-1.5 w-1.5 rounded-full',
                   stateToColor(project.latestState),
-                  isWorking && 'shadow-[0_0_6px_rgba(34,197,94,0.4)]',
+                  isWorking && 'shadow-[0_0_6px_rgba(34,197,94,0.4)]'
                 )}
               />
               <span className={cn('text-xs font-medium', stateToTextColor(project.latestState))}>
@@ -68,14 +69,12 @@ export function ProjectCard({ project }: ProjectCardProps) {
         <div className="mt-3 flex flex-wrap items-center gap-1 pl-[42px]">
           {collapsed.slice(0, 4).map((group, i) => (
             <Fragment key={`${group.state}-${group.timestamp}`}>
-              {i > 0 && (
-                <span className="text-[10px] text-muted-foreground/30 select-none">›</span>
-              )}
+              {i > 0 && <span className="text-[10px] text-muted-foreground/30 select-none">›</span>}
               <span
                 className={cn(
                   'inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px]',
                   'bg-muted text-muted-foreground',
-                  i >= 3 && 'opacity-50',
+                  i >= 3 && 'opacity-50'
                 )}
               >
                 <span className={cn('h-1 w-1 rounded-full', stateToColor(group.state))} />

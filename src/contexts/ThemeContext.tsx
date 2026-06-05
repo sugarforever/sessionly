@@ -34,22 +34,27 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     // Get initial theme from Tauri
-    api.getNativeTheme().then((t) => {
-      setSystemTheme(t as ResolvedTheme)
-      setIsInitialized(true)
-    }).catch(() => {
-      setIsInitialized(true)
-    })
+    api
+      .getNativeTheme()
+      .then((t) => {
+        setSystemTheme(t as ResolvedTheme)
+        setIsInitialized(true)
+      })
+      .catch(() => {
+        setIsInitialized(true)
+      })
 
     // Listen for theme changes via Tauri window
     let unlisten: (() => void) | null = null
     let cancelled = false
-    getCurrentWindow().onThemeChanged(({ payload }) => {
-      setSystemTheme(payload === 'dark' ? 'dark' : 'light')
-    }).then((fn) => {
-      if (cancelled) fn()
-      else unlisten = fn
-    })
+    getCurrentWindow()
+      .onThemeChanged(({ payload }) => {
+        setSystemTheme(payload === 'dark' ? 'dark' : 'light')
+      })
+      .then((fn) => {
+        if (cancelled) fn()
+        else unlisten = fn
+      })
 
     return () => {
       cancelled = true

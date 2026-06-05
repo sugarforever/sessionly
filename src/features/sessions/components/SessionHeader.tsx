@@ -81,7 +81,10 @@ export function SessionHeader({ session }: SessionHeaderProps) {
         <div className="flex flex-wrap items-center gap-3">
           <div className="flex items-center gap-1.5">
             <Folder className="h-3.5 w-3.5 text-muted-foreground/60" />
-            <span className="font-mono text-xs text-muted-foreground truncate max-w-[250px]" title={session.project}>
+            <span
+              className="font-mono text-xs text-muted-foreground truncate max-w-[250px]"
+              title={session.project}
+            >
               {session.project}
             </span>
           </div>
@@ -110,7 +113,10 @@ export function SessionHeader({ session }: SessionHeaderProps) {
             <span className="text-xs text-muted-foreground">{session.messages.length}</span>
           </div>
           {session.version && (
-            <Badge variant="secondary" className="h-5 bg-secondary px-1.5 font-mono text-[10px] text-muted-foreground hover:bg-secondary">
+            <Badge
+              variant="secondary"
+              className="h-5 bg-secondary px-1.5 font-mono text-[10px] text-muted-foreground hover:bg-secondary"
+            >
               v{session.version}
             </Badge>
           )}

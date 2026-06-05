@@ -112,11 +112,7 @@ export function SettingsPage() {
             disabled={loading}
             className="rounded border px-4 py-2 text-sm hover:bg-accent disabled:opacity-50"
           >
-            {loading
-              ? '...'
-              : hookStatus?.hooksInstalled
-                ? 'Uninstall Hooks'
-                : 'Install Hooks'}
+            {loading ? '...' : hookStatus?.hooksInstalled ? 'Uninstall Hooks' : 'Install Hooks'}
           </button>
         </div>
       </div>
@@ -130,7 +126,10 @@ export function SettingsPage() {
               Receive native notifications when Claude Code sessions need your attention.
             </p>
           </div>
-          <Toggle checked={prefs.enabled} onChange={() => updatePrefs({ enabled: !prefs.enabled })} />
+          <Toggle
+            checked={prefs.enabled}
+            onChange={() => updatePrefs({ enabled: !prefs.enabled })}
+          />
         </div>
 
         {/* Per-event toggles */}
@@ -171,9 +170,7 @@ export function SettingsPage() {
           >
             Send Test Notification
           </button>
-          {testResult && (
-            <span className="text-sm text-muted-foreground">{testResult}</span>
-          )}
+          {testResult && <span className="text-sm text-muted-foreground">{testResult}</span>}
         </div>
       </div>
     </div>

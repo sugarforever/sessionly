@@ -3,12 +3,7 @@ import { cn } from '@/lib/utils'
 import { navigationItems } from '@/config/navigation'
 import { useNavigation } from '@/contexts/NavigationContext'
 import { useTheme } from '@/contexts/ThemeContext'
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from '@/components/ui/tooltip'
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import { Sun, Moon, Monitor } from 'lucide-react'
 import { api } from '@/types/api'
 import iconPng from '/icon.png'
@@ -24,7 +19,10 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
   const [version, setVersion] = useState<string>('')
 
   useEffect(() => {
-    api.getVersion().then(setVersion).catch(() => {})
+    api
+      .getVersion()
+      .then(setVersion)
+      .catch(() => {})
   }, [])
 
   const cycleTheme = () => {
@@ -40,7 +38,7 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
     <aside
       className={cn(
         'flex h-screen flex-col border-r border-border/60 bg-card transition-[width] duration-200 ease-out',
-        collapsed ? 'w-[52px]' : 'w-52',
+        collapsed ? 'w-[52px]' : 'w-52'
       )}
     >
       {/* Branding */}
@@ -49,18 +47,14 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
         className={cn(
           'flex shrink-0 items-center gap-2.5 transition-all duration-200 cursor-pointer',
           'hover:bg-accent/60 active:bg-accent',
-          collapsed ? 'justify-center px-0 py-4' : 'px-4 py-4',
+          collapsed ? 'justify-center px-0 py-4' : 'px-4 py-4'
         )}
       >
-        <img
-          src={iconPng}
-          alt="Sessionly"
-          className="h-6 w-6 shrink-0 rounded-[6px]"
-        />
+        <img src={iconPng} alt="Sessionly" className="h-6 w-6 shrink-0 rounded-[6px]" />
         <span
           className={cn(
             'text-[13px] font-semibold tracking-tight text-foreground transition-opacity duration-200',
-            collapsed ? 'sr-only' : 'opacity-100',
+            collapsed ? 'sr-only' : 'opacity-100'
           )}
         >
           Sessionly
@@ -87,16 +81,11 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
                         isActive
                           ? 'bg-accent text-foreground font-medium'
                           : 'text-muted-foreground hover:bg-accent/60 hover:text-foreground',
-                        item.disabled && 'pointer-events-none opacity-40',
+                        item.disabled && 'pointer-events-none opacity-40'
                       )}
                     >
-                      <Icon
-                        className="h-4 w-4 shrink-0"
-                        strokeWidth={isActive ? 2.25 : 1.75}
-                      />
-                      {!collapsed && (
-                        <span className="truncate">{item.label}</span>
-                      )}
+                      <Icon className="h-4 w-4 shrink-0" strokeWidth={isActive ? 2.25 : 1.75} />
+                      {!collapsed && <span className="truncate">{item.label}</span>}
                     </button>
                   </TooltipTrigger>
                   {collapsed && (
@@ -107,9 +96,7 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
                 </Tooltip>
 
                 {/* Divider after item */}
-                {item.divider && (
-                  <div className="my-2 mx-2 border-t border-border/50" />
-                )}
+                {item.divider && <div className="my-2 mx-2 border-t border-border/50" />}
               </div>
             )
           })}
@@ -126,7 +113,7 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
                 className={cn(
                   'flex w-full items-center gap-2.5 rounded-md py-1.5 text-[13px] text-muted-foreground transition-colors duration-150 cursor-pointer',
                   'hover:bg-accent/60 hover:text-foreground',
-                  collapsed ? 'justify-center px-0' : 'px-2.5',
+                  collapsed ? 'justify-center px-0' : 'px-2.5'
                 )}
               >
                 <ThemeIcon className="h-4 w-4 shrink-0" strokeWidth={1.75} />
@@ -142,9 +129,7 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
         </TooltipProvider>
         {!collapsed && version && (
           <div className="mt-1 px-2.5">
-            <span className="text-[10px] tabular-nums text-muted-foreground/40">
-              v{version}
-            </span>
+            <span className="text-[10px] tabular-nums text-muted-foreground/40">v{version}</span>
           </div>
         )}
       </div>

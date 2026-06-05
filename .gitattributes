@@ -1,0 +1,5 @@
+# Normalize line endings to LF on checkout for all text files.
+# Without this, Windows CI checks files out as CRLF and Prettier
+# (endOfLine: "lf") fails the format check. Binary files are left
+# untouched thanks to `text=auto`.
+* text=auto eol=lf

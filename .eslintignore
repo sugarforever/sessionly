@@ -1,0 +1,9 @@
+# Build output
+dist/
+dist-electron/
+release/
+
+# Local-only sibling projects (gitignored, not part of the app build / CI)
+sessionly-tauri/
+sessionly-macos/
+promo-video/

@@ -90,7 +90,7 @@ export function useSessionMonitor() {
   }, [])
 
   const aggregateActive = state.projects.filter(
-    (p) => !p.isStale && p.latestState === 'working',
+    (p) => !p.isStale && p.latestState === 'working'
   ).length
 
   const aggregateQuiet = aggregateActive === 0

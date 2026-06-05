@@ -13,9 +13,7 @@ export function AggregateBar({ activeCount, isQuiet, totalProjects }: AggregateB
         <span
           className={cn(
             'h-2 w-2 rounded-full',
-            isQuiet
-              ? 'bg-muted-foreground/40'
-              : 'bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.5)]',
+            isQuiet ? 'bg-muted-foreground/40' : 'bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.5)]'
           )}
         />
         <span className="text-sm font-medium text-foreground">
