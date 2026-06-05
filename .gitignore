@@ -46,3 +46,6 @@ sessionly-macos/
 sessionly-web/
 debug/
 promo-video/
+
+# Git worktrees (isolated workspaces)
+.claude/worktrees/
