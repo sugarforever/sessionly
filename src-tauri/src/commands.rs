@@ -5,7 +5,7 @@ use tauri::State;
 
 #[tauri::command]
 pub async fn get_projects() -> Vec<ProjectGroup> {
-    tokio::task::spawn_blocking(|| session_store::get_all_sessions())
+    tokio::task::spawn_blocking(session_store::get_all_sessions)
         .await
         .unwrap_or_default()
 }

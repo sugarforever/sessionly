@@ -17,7 +17,9 @@ export interface ToolUseBlock {
   agentId?: string
 }
 
-export type ToolResultContentItem = { type: 'text'; text: string } | { type: 'image'; source: unknown }
+export type ToolResultContentItem =
+  | { type: 'text'; text: string }
+  | { type: 'image'; source: unknown }
 export type ToolResultContent = string | ToolResultContentItem[]
 
 export interface ToolResultBlock {
@@ -27,7 +29,11 @@ export interface ToolResultBlock {
   is_error?: boolean
 }
 
-export type ContentBlock = { type: 'text'; text: string } | ThinkingBlock | ToolUseBlock | ToolResultBlock
+export type ContentBlock =
+  | { type: 'text'; text: string }
+  | ThinkingBlock
+  | ToolUseBlock
+  | ToolResultBlock
 
 export interface ProcessedMessage {
   uuid: string

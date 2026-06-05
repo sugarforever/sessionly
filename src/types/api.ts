@@ -24,5 +24,4 @@ export const api = {
   hooksInstall: () => invoke<void>('hooks_install'),
   hooksUninstall: () => invoke<void>('hooks_uninstall'),
   hooksIsInstalled: () => invoke<boolean>('hooks_is_installed'),
-
 }

@@ -12,14 +12,11 @@ const SessionMonitorContext = createContext<SessionMonitorContextType | null>(nu
 
 export function SessionMonitorProvider({ children }: { children: ReactNode }) {
   const value = useSessionMonitor()
-  return (
-    <SessionMonitorContext.Provider value={value}>{children}</SessionMonitorContext.Provider>
-  )
+  return <SessionMonitorContext.Provider value={value}>{children}</SessionMonitorContext.Provider>
 }
 
 export function useSessionMonitorContext() {
   const ctx = useContext(SessionMonitorContext)
-  if (!ctx)
-    throw new Error('useSessionMonitorContext must be used within SessionMonitorProvider')
+  if (!ctx) throw new Error('useSessionMonitorContext must be used within SessionMonitorProvider')
   return ctx
 }

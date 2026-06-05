@@ -8,9 +8,7 @@ export function EmptyState() {
       </div>
       <div className="text-center">
         <p className="text-sm font-medium text-foreground">No active sessions</p>
-        <p className="mt-1 text-sm text-muted-foreground">
-          Start a session to see it here
-        </p>
+        <p className="mt-1 text-sm text-muted-foreground">Start a session to see it here</p>
       </div>
     </div>
   )

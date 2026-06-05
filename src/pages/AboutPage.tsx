@@ -9,7 +9,10 @@ export function AboutPage() {
   const [version, setVersion] = useState<string>('')
 
   useEffect(() => {
-    api.getVersion().then(setVersion).catch(() => {})
+    api
+      .getVersion()
+      .then(setVersion)
+      .catch(() => {})
   }, [])
 
   const handleOpenExternal = async (url: string) => {
@@ -32,7 +35,11 @@ export function AboutPage() {
           <Button
             variant="outline"
             size="sm"
-            onClick={() => handleOpenExternal('https://docs.anthropic.com/en/docs/agents-and-tools/claude-code/overview')}
+            onClick={() =>
+              handleOpenExternal(
+                'https://docs.anthropic.com/en/docs/agents-and-tools/claude-code/overview'
+              )
+            }
             className="gap-1.5"
           >
             <ExternalLink className="h-3.5 w-3.5" />
