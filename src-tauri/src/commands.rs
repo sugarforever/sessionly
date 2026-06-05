@@ -69,11 +69,10 @@ pub fn hooks_is_installed() -> bool {
 
 #[tauri::command]
 pub fn send_native_notification(title: String, body: String) -> Result<(), String> {
-    let escaped_body = body.replace('\\', "\\\\").replace('"', "\\\"");
-    let escaped_title = title.replace('\\', "\\\\").replace('"', "\\\"");
-
     #[cfg(target_os = "macos")]
     {
+        let escaped_body = body.replace('\\', "\\\\").replace('"', "\\\"");
+        let escaped_title = title.replace('\\', "\\\\").replace('"', "\\\"");
         std::process::Command::new("osascript")
             .arg("-e")
             .arg(format!(
@@ -82,6 +81,13 @@ pub fn send_native_notification(title: String, body: String) -> Result<(), Strin
             ))
             .output()
             .map_err(|e| format!("osascript failed: {}", e))?;
+    }
+
+    // Non-macOS platforms have no osascript equivalent here; consume the args
+    // so they are not flagged as unused under `-D warnings`.
+    #[cfg(not(target_os = "macos"))]
+    {
+        let _ = (&title, &body);
     }
 
     Ok(())
