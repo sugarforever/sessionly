@@ -559,7 +559,7 @@ pub fn get_all_sessions() -> Vec<ProjectGroup> {
         }
 
         // Sort by start time (newest first)
-        sessions.sort_by(|a, b| b.start_time.cmp(&a.start_time));
+        sessions.sort_by_key(|b| std::cmp::Reverse(b.start_time));
 
         groups.push(ProjectGroup {
             project: decode_project_path(&project_encoded),
