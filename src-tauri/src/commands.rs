@@ -31,11 +31,16 @@ pub fn get_native_theme(window: tauri::Window) -> String {
 }
 
 #[tauri::command]
-pub async fn export_session_markdown(session_id: String, project_encoded: String) -> Result<String, String> {
+pub async fn export_session_markdown(
+    session_id: String,
+    project_encoded: String,
+    dest_path: String,
+) -> Result<(), String> {
     tokio::task::spawn_blocking(move || {
         let session = session_store::get_session(&session_id, &project_encoded)
             .ok_or_else(|| "Session not found".to_string())?;
-        Ok(crate::markdown_export::session_to_markdown(&session))
+        let markdown = crate::markdown_export::session_to_markdown(&session);
+        std::fs::write(&dest_path, markdown).map_err(|e| format!("Failed to write {dest_path}: {e}"))
     })
     .await
     .map_err(|e| e.to_string())?

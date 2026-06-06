@@ -16,8 +16,8 @@ export const api = {
   sessionsGet: (sessionId: string, projectEncoded: string) =>
     invoke<Session>('get_session', { sessionId, projectEncoded }),
   sessionsRefresh: () => Promise.resolve(), // Just re-fetch
-  sessionsExportMarkdown: (sessionId: string, projectEncoded: string) =>
-    invoke<string>('export_session_markdown', { sessionId, projectEncoded }),
+  sessionsExportMarkdown: (sessionId: string, projectEncoded: string, destPath: string) =>
+    invoke<void>('export_session_markdown', { sessionId, projectEncoded, destPath }),
 
   // Hooks
   hooksGetStatus: () => invoke<HookStatus>('hooks_get_status'),
