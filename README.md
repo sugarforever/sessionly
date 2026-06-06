@@ -1,16 +1,16 @@
 # Sessionly
 
-A desktop application for browsing and managing your Claude Code CLI session history. Review past conversations, explore tool calls, view code changes, and access an integrated terminal - all in a clean, native interface.
+A cross-platform desktop app for browsing, monitoring, and exporting your Claude Code CLI session history. Review past conversations, explore tool calls, view code changes, and get notified when long-running sessions finish — all in a clean, native interface.
 
 ## What is Sessionly?
 
-Sessionly reads your Claude Code session files from `~/.claude/projects/` and presents them in a rich, browsable format. It's designed for developers who use Claude Code CLI and want to:
+Sessionly reads your Claude Code session files directly from `~/.claude/projects/` and presents them in a rich, browsable format. There is **no internal database** — your sessions are always read fresh from disk, so nothing to sync or import. It's designed for developers who use Claude Code CLI and want to:
 
 - **Review past sessions** - Browse conversations organized by project
 - **Explore tool calls** - See exactly what files Claude read, wrote, and edited
 - **Track code changes** - View code blocks with syntax highlighting
 - **Understand AI reasoning** - Read Claude's extended thinking blocks
-- **Access integrated terminal** - Open a terminal in your project directory
+- **Stay informed** - Get a native notification when a session completes or errors
 
 ## Features
 
@@ -27,16 +27,20 @@ Sessionly reads your Claude Code session files from `~/.claude/projects/` and pr
 - Tool call details with expandable results
 - Subagent conversations (Task tool delegations)
 
-### Integrated Terminal
-- Toggle terminal panel at the bottom of the session view
-- Automatically sets working directory to project path
-- Full interactive shell with PTY support
+### Live Monitoring & Notifications
+- Watches session files for live activity as Claude works
+- Native desktop notifications when a session **completes** or **errors**
+- Per-event toggles (complete / error) and cooldown de-duplication to avoid notification storms
+- Optional Claude Code hooks install/uninstall, managed from Settings
+
+### Export
+- Export any session to Markdown from the session header
 
 ### Desktop Experience
-- Native macOS/Windows/Linux app
-- System tray integration
-- Window state persistence
-- Light and dark theme support
+- Native macOS / Windows / Linux app built on Tauri
+- System tray icon
+- Light / dark / system theme with the Inter font family
+- Automatic updates (signed release manifest)
 
 ## Installation
 
@@ -44,78 +48,83 @@ Sessionly reads your Claude Code session files from `~/.claude/projects/` and pr
 
 Download the latest release for your platform from the [Releases](https://github.com/sugarforever/sessionly/releases) page.
 
+> **Note for legacy (≤ v1.1.1) users:** releases up to v1.1.1 were Electron builds. The first Tauri release (v2.0.0) cannot be reached via the old auto-updater — download it manually once. Your session data is unaffected (it lives in `~/.claude`, not in the app).
+
 ### From Source
+
+Requires [Node.js](https://nodejs.org/) 18+ and the [Rust toolchain](https://www.rust-lang.org/tools/install) plus your platform's [Tauri prerequisites](https://v2.tauri.app/start/prerequisites/).
 
 ```bash
 # Clone the repository
 git clone https://github.com/sugarforever/sessionly.git
 cd sessionly
 
-# Install dependencies
+# Install JS dependencies (Rust/Cargo deps build on first `tauri` run)
 npm install
 
-# Start development server
-npm run dev
+# Run the full app (Vite dev server + Rust backend, hot reload)
+npm run tauri dev
 ```
 
 ## Tech Stack
 
 | Category | Technology |
 |----------|------------|
-| Framework | Electron 32+ |
-| UI Library | React 18 |
+| Framework | Tauri v2 (Rust backend) |
+| UI Library | React 19 |
 | Language | TypeScript 5 |
-| Build Tool | Vite 5 |
+| Build Tool | Vite 7 |
 | State Management | Redux Toolkit |
-| UI Components | shadcn/ui + Radix UI |
+| UI Components | shadcn-style + Radix UI |
 | Styling | Tailwind CSS |
-| Terminal | xterm + node-pty |
-| Testing | Vitest + React Testing Library |
 
 ## Development
 
-### Commands
+All commands run from the repository root.
 
 ```bash
-# Development with hot reload
-npm run dev
+# Development
+npm run tauri dev       # Primary dev loop: Vite dev server + Rust app, hot reload
+npm run dev             # Frontend-only in a browser (no native APIs / Tauri commands)
 
-# Build for production
-npm run build           # Current platform
-npm run build:mac       # macOS (.dmg, .zip)
-npm run build:win       # Windows (.exe, .zip)
-npm run build:linux     # Linux (.AppImage, .deb)
+# Build
+npm run build           # tsc + vite build (frontend bundle only)
+npm run tauri build     # Full native app bundle (installers under src-tauri/target/release/bundle/)
 
-# Testing
-npm test                # Run tests
-npm run test:ui         # Tests with UI
-npm run typecheck       # TypeScript check
-
-# Code quality
-npm run lint            # Run ESLint
-npm run lint:fix        # Fix ESLint errors
-npm run format          # Format with Prettier
+# Quality gates (these mirror CI)
+npm run typecheck       # tsc --noEmit
+npm run lint            # eslint, --max-warnings 0
+npm run format          # prettier --write
+npm run format:check    # prettier --check
+cd src-tauri && cargo clippy -- -D warnings
 ```
+
+> There is currently no test runner configured.
 
 ### Project Structure
 
 ```
 sessionly/
-├── electron/                    # Electron main process
-│   ├── main/
-│   │   ├── index.ts            # Main entry point
-│   │   ├── ipc-handlers.ts     # IPC message handlers
-│   │   ├── session-store.ts    # Session file parser
-│   │   └── terminal-manager.ts # PTY management
-│   ├── preload/                # Context bridge
-│   └── shared/                 # Shared types
-├── src/                        # React renderer process
-│   ├── components/             # React components
-│   │   └── ui/                 # shadcn/ui components
-│   ├── features/
-│   │   └── sessions/          # Session browsing feature
-│   ├── pages/                  # Application pages
-│   └── store/                  # Redux store
+├── src/                        # React renderer (WebView)
+│   ├── App.tsx, main.tsx       # Entry + provider composition
+│   ├── components/             # Shared components
+│   │   └── ui/                 # shadcn-style primitives
+│   ├── features/               # Feature areas (home/, sessions/)
+│   ├── pages/                  # Top-level pages (About, Settings)
+│   ├── contexts/               # React contexts (theme, navigation, monitor…)
+│   ├── store/                  # Redux Toolkit store + slices
+│   └── types/api.ts            # Typed wrapper over Tauri `invoke`
+├── src-tauri/                  # Rust backend / core
+│   ├── src/
+│   │   ├── lib.rs              # App setup: plugins + command handlers
+│   │   ├── commands.rs         # #[tauri::command] entry points
+│   │   ├── session_store.rs    # Reads & parses ~/.claude/projects/
+│   │   ├── session_monitor.rs  # Watches session files for live activity
+│   │   ├── session_types.rs    # Rust data models
+│   │   ├── markdown_export.rs  # Session → Markdown export
+│   │   └── hooks.rs            # Claude Code hooks install/uninstall
+│   ├── capabilities/           # Tauri permission grants
+│   └── tauri.conf.json         # App / bundle / updater config
 └── package.json
 ```
 
@@ -129,11 +138,11 @@ Sessionly reads Claude Code session files stored in `~/.claude/projects/`. These
 - Extended thinking content
 - Subagent delegations
 
-The app parses these files and presents them in a user-friendly interface, making it easy to review what happened in each session.
+The Rust backend owns all privileged work (filesystem reads, session parsing, live monitoring, notifications, hook install) and exposes it to the React frontend through typed Tauri commands. The frontend renders everything in the OS WebView. App-owned preferences (theme, notification settings) live in `localStorage`; there is no internal session database.
 
 ## Requirements
 
-- Node.js 18+ (for development)
+- Node.js 18+ and the Rust toolchain (for building from source)
 - Claude Code CLI (to generate sessions to view)
 
 ## License
