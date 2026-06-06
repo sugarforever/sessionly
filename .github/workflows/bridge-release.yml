@@ -1,0 +1,185 @@
+name: Bridge Release (Electron 1.1.2)
+
+# Builds the legacy Electron 1.1.2 "bridge" and attaches its electron-updater
+# manifests + installers to an EXISTING release (e.g. the Tauri v2.0.0 release),
+# so legacy v1.1.1 users get notified and can migrate. Run only AFTER that
+# release exists. Runs from the `legacy-electron` branch.
+#
+# Only the files electron-updater needs are attached: the channel manifests
+# (latest*.yml) plus the referenced artifact per platform (mac .zip, win .exe,
+# linux .AppImage) and their .blockmap. The .dmg/.deb/.rpm are built but
+# intentionally NOT uploaded — fresh installers for the migration target live
+# on the Tauri v2.0.0 release; we don't clutter it with old-version installers.
+
+on:
+  workflow_dispatch:
+    inputs:
+      target_tag:
+        description: 'Existing release tag to attach bridge assets to (e.g. v2.0.0)'
+        required: true
+        type: string
+
+permissions: {}
+
+jobs:
+  build-macos:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install setuptools (for node-gyp)
+        run: pip install setuptools
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Import Code Signing Certificate
+        env:
+          CERTIFICATE_P12_BASE64: ${{ secrets.MAC_CERTIFICATE_P12_BASE64 }}
+          CERTIFICATE_PASSWORD: ${{ secrets.MAC_CERTIFICATE_PASSWORD }}
+          KEYCHAIN_PASSWORD: ${{ github.run_id }}
+        run: |
+          if [ -z "$CERTIFICATE_P12_BASE64" ]; then
+            echo "No certificate provided, skipping code signing setup"
+            exit 0
+          fi
+          KEYCHAIN_PATH=$RUNNER_TEMP/app-signing.keychain-db
+          security create-keychain -p "$KEYCHAIN_PASSWORD" $KEYCHAIN_PATH
+          security set-keychain-settings -lut 21600 $KEYCHAIN_PATH
+          security unlock-keychain -p "$KEYCHAIN_PASSWORD" $KEYCHAIN_PATH
+          echo "$CERTIFICATE_P12_BASE64" | base64 --decode > $RUNNER_TEMP/certificate.p12
+          security import $RUNNER_TEMP/certificate.p12 -P "$CERTIFICATE_PASSWORD" -A -t cert -f pkcs12 -k $KEYCHAIN_PATH
+          security set-key-partition-list -S apple-tool:,apple: -k "$KEYCHAIN_PASSWORD" $KEYCHAIN_PATH
+          security list-keychain -d user -s $KEYCHAIN_PATH
+          security find-identity -v -p codesigning $KEYCHAIN_PATH
+          rm $RUNNER_TEMP/certificate.p12
+
+      - name: Build for macOS (signed + notarized)
+        run: npm run build:mac
+        env:
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: bridge-macos
+          path: |
+            release/**/*.zip
+            release/**/*.yml
+            release/**/*.blockmap
+          if-no-files-found: error
+
+  build-windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install setuptools (for node-gyp)
+        run: pip install setuptools
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build for Windows
+        run: npm run build:win
+
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: bridge-windows
+          path: |
+            release/**/*.exe
+            release/**/*.yml
+            release/**/*.blockmap
+          if-no-files-found: error
+
+  build-linux:
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install setuptools (for node-gyp)
+        run: pip install setuptools
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build for Linux
+        run: npm run build:linux
+
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: bridge-linux
+          path: |
+            release/**/*.AppImage
+            release/**/*.yml
+            release/**/*.blockmap
+          if-no-files-found: error
+
+  attach-to-release:
+    needs: [build-macos, build-windows, build-linux]
+    runs-on: ubuntu-22.04
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download all build artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+
+      - name: Drop non-channel yml files
+        run: |
+          find artifacts -name 'builder-debug.yml' -delete || true
+          find artifacts -name 'app-update.yml' -delete || true
+          echo "Files to upload:"
+          find artifacts -type f \( -name '*.yml' -o -name '*.zip' -o -name '*.exe' -o -name '*.AppImage' -o -name '*.blockmap' \)
+
+      - name: Upload bridge assets to existing release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TARGET_TAG: ${{ inputs.target_tag }}
+        run: |
+          failed=0
+          while IFS= read -r -d '' f; do
+            echo "Uploading: $f"
+            gh release upload "$TARGET_TAG" "$f" --clobber || { echo "ERROR: failed to upload $f"; failed=1; }
+          done < <(find artifacts -type f \( -name '*.yml' -o -name '*.zip' -o -name '*.exe' -o -name '*.AppImage' -o -name '*.blockmap' \) -print0)
+          exit $failed
