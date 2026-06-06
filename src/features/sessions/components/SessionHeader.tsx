@@ -15,7 +15,6 @@ import { Button } from '@/components/ui/button'
 import type { Session } from '@/types/session-types'
 import { api } from '@/types/api'
 import { save } from '@tauri-apps/plugin-dialog'
-import { writeTextFile } from '@tauri-apps/plugin-fs'
 
 interface SessionHeaderProps {
   session: Session
@@ -24,6 +23,7 @@ interface SessionHeaderProps {
 export function SessionHeader({ session }: SessionHeaderProps) {
   const [copied, setCopied] = useState(false)
   const [isExporting, setIsExporting] = useState(false)
+  const [exportStatus, setExportStatus] = useState<'idle' | 'success' | 'error'>('idle')
 
   const resumeCommand = `claude --resume ${session.id}`
 
@@ -40,18 +40,22 @@ export function SessionHeader({ session }: SessionHeaderProps) {
   const handleExport = async () => {
     if (isExporting) return
     setIsExporting(true)
+    setExportStatus('idle')
     try {
-      const markdown = await api.sessionsExportMarkdown(session.id, session.projectEncoded)
       const filePath = await save({
         title: 'Export Session as Markdown',
         defaultPath: `session_${session.id.slice(0, 8)}.md`,
         filters: [{ name: 'Markdown', extensions: ['md'] }],
       })
       if (filePath) {
-        await writeTextFile(filePath, markdown)
+        await api.sessionsExportMarkdown(session.id, session.projectEncoded, filePath)
+        setExportStatus('success')
+        setTimeout(() => setExportStatus('idle'), 2000)
       }
     } catch (error) {
       console.error('Failed to export session:', error)
+      setExportStatus('error')
+      setTimeout(() => setExportStatus('idle'), 3000)
     } finally {
       setIsExporting(false)
     }
@@ -150,15 +154,27 @@ export function SessionHeader({ session }: SessionHeaderProps) {
             size="sm"
             onClick={handleExport}
             disabled={isExporting}
-            className="h-7 px-2.5 text-xs text-muted-foreground hover:text-foreground hover:bg-accent"
+            className={`h-7 px-2.5 text-xs transition-colors ${
+              exportStatus === 'success'
+                ? 'bg-emerald-900/50 text-emerald-400 hover:bg-emerald-900/50'
+                : exportStatus === 'error'
+                  ? 'bg-red-900/50 text-red-400 hover:bg-red-900/50'
+                  : 'text-muted-foreground hover:text-foreground hover:bg-accent'
+            }`}
             title="Export session as Markdown"
           >
             {isExporting ? (
               <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
+            ) : exportStatus === 'success' ? (
+              <Check className="mr-1.5 h-3.5 w-3.5" />
             ) : (
               <Download className="mr-1.5 h-3.5 w-3.5" />
             )}
-            Export
+            {exportStatus === 'success'
+              ? 'Exported!'
+              : exportStatus === 'error'
+                ? 'Export failed'
+                : 'Export'}
           </Button>
         </div>
       </div>
