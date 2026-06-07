@@ -49,3 +49,6 @@ promo-video/
 
 # Git worktrees (isolated workspaces)
 .claude/worktrees/
+
+# Brainstorming visual companion artifacts
+.superpowers/
