@@ -3,6 +3,7 @@
  */
 import { invoke } from '@tauri-apps/api/core'
 import type { ProjectGroup, Session, HookStatus } from './session-types'
+import type { SearchHit, SearchFilters, IndexStatus, BackendConfig } from './search'
 
 export const api = {
   // App
@@ -24,4 +25,12 @@ export const api = {
   hooksInstall: () => invoke<void>('hooks_install'),
   hooksUninstall: () => invoke<void>('hooks_uninstall'),
   hooksIsInstalled: () => invoke<boolean>('hooks_is_installed'),
+
+  // Search
+  searchQuery: (query: string, filters?: SearchFilters, limit?: number) =>
+    invoke<SearchHit[]>('search_query', { query, filters, limit }),
+  searchIndexStatus: () => invoke<IndexStatus>('search_index_status'),
+  searchReindex: () => invoke<void>('search_reindex'),
+  searchGetBackend: () => invoke<BackendConfig>('search_get_backend'),
+  searchSetBackend: (config: BackendConfig) => invoke<void>('search_set_backend', { config }),
 }
