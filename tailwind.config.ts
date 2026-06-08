@@ -4,6 +4,7 @@ import tailwindcssAnimate from 'tailwindcss-animate'
 const config: Config = {
   darkMode: ['class'],
   content: ['./index.html', './src/**/*.{js,ts,jsx,tsx}'],
+  safelist: ['ring-2', 'ring-amber-400/60', 'rounded-md'],
   theme: {
     extend: {
       colors: {
