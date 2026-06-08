@@ -1,7 +1,9 @@
 use fastembed::{EmbeddingModel, InitOptions, TextEmbedding};
 
 pub trait Embedder: Send + Sync {
+    #[allow(dead_code)]
     fn id(&self) -> String;
+    #[allow(dead_code)]
     fn dim(&self) -> usize;
     fn embed_documents(&self, texts: &[String]) -> Result<Vec<Vec<f32>>, String>;
     fn embed_query(&self, text: &str) -> Result<Vec<f32>, String>;
@@ -47,6 +49,7 @@ use crate::search::types::BackendConfig;
 pub struct OpenAiEmbedder {
     api_key: String,
     model: String,
+    #[allow(dead_code)]
     dim: usize,
 }
 

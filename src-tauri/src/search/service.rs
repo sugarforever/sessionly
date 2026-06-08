@@ -13,7 +13,7 @@ const MAX_CHARS: usize = 1200;
 
 pub struct SearchService {
     index: RwLock<Arc<SearchIndex>>,
-    embedder: RwLock<Arc<dyn Embedder>>,
+    embedder: RwLock<Option<Arc<dyn Embedder>>>,
     config: Mutex<BackendConfig>,
     db_path: PathBuf,
     building: AtomicBool,
@@ -21,23 +21,43 @@ pub struct SearchService {
     total: AtomicUsize,
 }
 
+fn expected_dim(cfg: &BackendConfig) -> usize {
+    if cfg.provider == "openai" { 1536 } else { 384 }
+}
+
 impl SearchService {
     pub fn new(app_data_dir: PathBuf) -> Result<Self, String> {
         std::fs::create_dir_all(&app_data_dir).map_err(|e| e.to_string())?;
         let db_path = app_data_dir.join("search-index.sqlite");
         let config = load_config(&app_data_dir);
-        let api_key = read_key(&config);
-        let embedder = build_embedder(&config, api_key)?;
-        let index = SearchIndex::open(&db_path, embedder.dim()).map_err(|e| e.to_string())?;
+        let dim = expected_dim(&config);
+        let index = match SearchIndex::open(&db_path, dim) {
+            Ok(idx) => idx,
+            Err(_) => {
+                let _ = std::fs::remove_file(&db_path);
+                SearchIndex::open(&db_path, dim).map_err(|e| e.to_string())?
+            }
+        };
         Ok(Self {
             index: RwLock::new(Arc::new(index)),
-            embedder: RwLock::new(Arc::from(embedder)),
+            embedder: RwLock::new(None),
             config: Mutex::new(config),
             db_path,
             building: AtomicBool::new(false),
             indexed: AtomicUsize::new(0),
             total: AtomicUsize::new(0),
         })
+    }
+
+    fn ensure_embedder(&self) -> Result<Arc<dyn Embedder>, String> {
+        if let Some(e) = self.embedder.read().unwrap().clone() {
+            return Ok(e);
+        }
+        let cfg = self.config.lock().unwrap().clone();
+        let key = read_key(&cfg);
+        let e: Arc<dyn Embedder> = Arc::from(build_embedder(&cfg, key)?);
+        *self.embedder.write().unwrap() = Some(e.clone());
+        Ok(e)
     }
 
     pub fn status(&self) -> IndexStatus {
@@ -55,7 +75,7 @@ impl SearchService {
                 .max(idx.distinct_session_count().unwrap_or(0)),
             building: self.building.load(Ordering::Relaxed),
             last_built,
-            model: self.embedder.read().unwrap().id(),
+            model: self.config.lock().unwrap().model.clone(),
         }
     }
 
@@ -65,7 +85,8 @@ impl SearchService {
         filters: &SearchFilters,
         limit: usize,
     ) -> Result<Vec<SearchHit>, String> {
-        let qv = self.embedder.read().unwrap().embed_query(text)?;
+        let emb = self.ensure_embedder()?;
+        let qv = emb.embed_query(text)?;
         self.index
             .read()
             .unwrap()
@@ -132,7 +153,7 @@ impl SearchService {
             .first()
             .map(|m| truncate(&m.text_content, 80))
             .unwrap_or_default();
-        let embedder = self.embedder.read().unwrap();
+        let embedder = self.ensure_embedder()?;
 
         let mut texts = Vec::new();
         let mut metas = Vec::new();
@@ -193,10 +214,8 @@ impl SearchService {
             write_key(&cfg, &key)?;
         }
         save_config(app_data_dir, &cfg);
-        let api_key = read_key(&cfg);
-        let new_embedder = build_embedder(&cfg, api_key)?;
-        let new_dim = new_embedder.dim();
-        let old_dim = self.embedder.read().unwrap().dim();
+        let new_dim = expected_dim(&cfg);
+        let old_dim = self.index.read().unwrap().dim();
         // NOTE: a backend switch does not pause an in-flight background build();
         // Task 12 re-triggers build() after switching, so the new index is fully
         // repopulated. Source of truth is ~/.claude, so no data can be lost here.
@@ -206,7 +225,8 @@ impl SearchService {
                 SearchIndex::open(&self.db_path, new_dim).map_err(|e| e.to_string())?;
             *self.index.write().unwrap() = Arc::new(new_index);
         }
-        *self.embedder.write().unwrap() = Arc::from(new_embedder);
+        // Reset embedder to lazy — will be loaded on next query/build
+        *self.embedder.write().unwrap() = None;
         *self.config.lock().unwrap() = cfg;
         Ok(())
     }

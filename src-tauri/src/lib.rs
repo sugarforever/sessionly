@@ -13,7 +13,7 @@ use tauri::Manager;
 pub struct AppState {
     pub session_monitor: Arc<SessionMonitor>,
     pub hook_server: Option<hooks::HookServer>,
-    pub search: Arc<search::SearchService>,
+    pub search: Option<Arc<search::SearchService>>,
 }
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -32,12 +32,19 @@ pub fn run() {
             let monitor = Arc::new(SessionMonitor::new(handle.clone()));
 
             let app_data_dir = app.path().app_data_dir().expect("app data dir");
-            let search = Arc::new(
-                search::SearchService::new(app_data_dir).expect("init search service"),
-            );
-            monitor.set_search(search.clone());
-            let search_build = search.clone();
-            std::thread::spawn(move || { let _ = search_build.build(); });
+            let search = match search::SearchService::new(app_data_dir) {
+                Ok(svc) => {
+                    let svc = Arc::new(svc);
+                    monitor.set_search(svc.clone());
+                    let svc_build = svc.clone();
+                    std::thread::spawn(move || { let _ = svc_build.build(); });
+                    Some(svc)
+                }
+                Err(e) => {
+                    eprintln!("Search service init failed (search disabled): {e}");
+                    None
+                }
+            };
 
             // Start hook server
             let hook_server = match hooks::HookServer::start(monitor.clone()) {
@@ -68,7 +75,7 @@ pub fn run() {
             app.manage(AppState {
                 session_monitor: monitor,
                 hook_server,
-                search: search.clone(),
+                search,
             });
 
             Ok(())

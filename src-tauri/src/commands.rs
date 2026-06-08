@@ -1,9 +1,7 @@
 use crate::search::{BackendConfig, IndexStatus, SearchFilters, SearchHit};
-use crate::search::SearchService;
 use crate::session_store;
 use crate::session_types::{ProjectGroup, Session};
 use crate::AppState;
-use std::sync::Arc;
 use tauri::{Manager, State};
 
 #[tauri::command]
@@ -82,7 +80,7 @@ pub async fn search_query(
     filters: Option<SearchFilters>,
     limit: Option<usize>,
 ) -> Result<Vec<SearchHit>, String> {
-    let svc: Arc<SearchService> = state.search.clone();
+    let Some(svc) = state.search.clone() else { return Ok(Vec::new()) };
     let filters = filters.unwrap_or_default();
     let limit = limit.unwrap_or(40);
     tokio::task::spawn_blocking(move || svc.query(&query, &filters, limit))
@@ -92,12 +90,15 @@ pub async fn search_query(
 
 #[tauri::command]
 pub fn search_index_status(state: State<'_, AppState>) -> IndexStatus {
-    state.search.status()
+    match &state.search {
+        Some(s) => s.status(),
+        None => IndexStatus { indexed: 0, total: 0, building: false, last_built: None, model: "unavailable".into() },
+    }
 }
 
 #[tauri::command]
 pub async fn search_reindex(state: State<'_, AppState>) -> Result<(), String> {
-    let svc = state.search.clone();
+    let Some(svc) = state.search.clone() else { return Err("search unavailable".into()) };
     tokio::task::spawn_blocking(move || svc.build())
         .await
         .map_err(|e| e.to_string())?
@@ -105,7 +106,10 @@ pub async fn search_reindex(state: State<'_, AppState>) -> Result<(), String> {
 
 #[tauri::command]
 pub fn search_get_backend(state: State<'_, AppState>) -> BackendConfig {
-    state.search.config()
+    match &state.search {
+        Some(s) => s.config(),
+        None => BackendConfig { provider: "local".into(), model: "multilingual-e5-small".into(), api_key: None },
+    }
 }
 
 #[tauri::command]
@@ -114,12 +118,12 @@ pub async fn search_set_backend(
     state: State<'_, AppState>,
     config: BackendConfig,
 ) -> Result<(), String> {
+    let Some(svc) = state.search.clone() else { return Err("search unavailable".into()) };
     let dir = app.path().app_data_dir().map_err(|e| e.to_string())?;
-    let svc = state.search.clone();
     let res = tokio::task::spawn_blocking(move || svc.set_backend(config, &dir))
         .await
         .map_err(|e| e.to_string())?;
-    let svc2 = state.search.clone();
+    let Some(svc2) = state.search.clone() else { return res };
     std::thread::spawn(move || { let _ = svc2.build(); });
     res
 }
