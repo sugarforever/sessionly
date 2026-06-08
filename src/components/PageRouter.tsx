@@ -1,6 +1,7 @@
 import React from 'react'
 import { useNavigation } from '@/contexts/NavigationContext'
 import { HomePage } from '@/features/home/HomePage'
+import { SearchPage } from '@/features/search/SearchPage'
 import { SessionsPage } from '@/features/sessions/SessionsPage'
 import { AboutPage } from '@/pages/AboutPage'
 import { SettingsPage } from '@/pages/SettingsPage'
@@ -8,6 +9,7 @@ import type { PageId } from '@/config/navigation'
 
 const pageComponents: Record<PageId, () => React.JSX.Element> = {
   home: HomePage,
+  search: SearchPage,
   history: SessionsPage,
   settings: SettingsPage,
   about: AboutPage,

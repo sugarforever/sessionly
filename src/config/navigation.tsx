@@ -1,4 +1,4 @@
-import { Home, History, Info, Settings } from 'lucide-react'
+import { Home, History, Info, Settings, Search } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 
 export interface NavigationItem {
@@ -15,6 +15,11 @@ export const navigationItems: NavigationItem[] = [
     id: 'home',
     label: 'Home',
     icon: Home,
+  },
+  {
+    id: 'search',
+    label: 'Search',
+    icon: Search,
   },
   {
     id: 'history',
