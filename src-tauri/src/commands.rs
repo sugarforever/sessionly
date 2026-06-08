@@ -92,7 +92,7 @@ pub async fn search_query(
 pub fn search_index_status(state: State<'_, AppState>) -> IndexStatus {
     match &state.search {
         Some(s) => s.status(),
-        None => IndexStatus { indexed: 0, total: 0, building: false, last_built: None, model: "unavailable".into() },
+        None => IndexStatus { indexed: 0, total: 0, building: false, last_built: None, model: "unavailable".into(), enabled: false, model_present: false, model_size_bytes: 0 },
     }
 }
 

@@ -4,7 +4,7 @@ use crate::search::index::{ChunkRow, SearchIndex};
 use crate::search::types::{BackendConfig, IndexStatus, SearchFilters, SearchHit};
 use crate::session_store;
 use sha2::{Digest, Sha256};
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
 use std::sync::{Arc, Mutex, RwLock};
 
@@ -16,9 +16,12 @@ pub struct SearchService {
     embedder: RwLock<Option<Arc<dyn Embedder>>>,
     config: Mutex<BackendConfig>,
     db_path: PathBuf,
+    models_dir: PathBuf,
     building: AtomicBool,
     indexed: AtomicUsize,
     total: AtomicUsize,
+    enabled: AtomicBool,
+    cancel: AtomicBool,
 }
 
 fn expected_dim(cfg: &BackendConfig) -> usize {
@@ -29,7 +32,9 @@ impl SearchService {
     pub fn new(app_data_dir: PathBuf) -> Result<Self, String> {
         std::fs::create_dir_all(&app_data_dir).map_err(|e| e.to_string())?;
         let db_path = app_data_dir.join("search-index.sqlite");
+        let models_dir = app_data_dir.join("models");
         let config = load_config(&app_data_dir);
+        let enabled = read_enabled(&app_data_dir);
         let dim = expected_dim(&config);
         let index = match SearchIndex::open(&db_path, dim) {
             Ok(idx) => idx,
@@ -43,9 +48,12 @@ impl SearchService {
             embedder: RwLock::new(None),
             config: Mutex::new(config),
             db_path,
+            models_dir,
             building: AtomicBool::new(false),
             indexed: AtomicUsize::new(0),
             total: AtomicUsize::new(0),
+            enabled: AtomicBool::new(enabled),
+            cancel: AtomicBool::new(false),
         })
     }
 
@@ -55,7 +63,8 @@ impl SearchService {
         }
         let cfg = self.config.lock().unwrap().clone();
         let key = read_key(&cfg);
-        let e: Arc<dyn Embedder> = Arc::from(build_embedder(&cfg, key)?);
+        let e: Arc<dyn Embedder> =
+            Arc::from(build_embedder(&cfg, key, self.models_dir.clone())?);
         *self.embedder.write().unwrap() = Some(e.clone());
         Ok(e)
     }
@@ -76,6 +85,9 @@ impl SearchService {
             building: self.building.load(Ordering::Relaxed),
             last_built,
             model: self.config.lock().unwrap().model.clone(),
+            enabled: self.is_enabled(),
+            model_present: self.model_present(),
+            model_size_bytes: self.model_size_bytes(),
         }
     }
 
@@ -85,6 +97,9 @@ impl SearchService {
         filters: &SearchFilters,
         limit: usize,
     ) -> Result<Vec<SearchHit>, String> {
+        if !self.enabled.load(Ordering::Relaxed) {
+            return Ok(Vec::new());
+        }
         let emb = self.ensure_embedder()?;
         let qv = emb.embed_query(text)?;
         self.index
@@ -95,11 +110,15 @@ impl SearchService {
     }
 
     pub fn build(&self) -> Result<(), String> {
+        if !self.enabled.load(Ordering::Relaxed) {
+            return Ok(());
+        }
         if self.building.swap(true, Ordering::SeqCst) {
             return Ok(());
         }
         let result = self.build_inner();
         self.building.store(false, Ordering::SeqCst);
+        self.cancel.store(false, Ordering::SeqCst);
         let now = chrono::Utc::now().timestamp();
         let _ = self
             .index
@@ -120,6 +139,9 @@ impl SearchService {
         self.total.store(files.len(), Ordering::Relaxed);
         self.indexed.store(0, Ordering::Relaxed);
         for (project_encoded, file) in files {
+            if self.cancel.load(Ordering::Relaxed) {
+                break;
+            }
             if let Some(session_id) = file.file_stem().and_then(|s| s.to_str()) {
                 let _ = self.index_one(&project_encoded, session_id, &file);
             }
@@ -201,6 +223,59 @@ impl SearchService {
         Ok(())
     }
 
+    /// Whether semantic search is enabled by the user.
+    // wired by commands in next task
+    #[allow(dead_code)]
+    pub fn is_enabled(&self) -> bool {
+        self.enabled.load(Ordering::Relaxed)
+    }
+
+    /// Enable semantic search and persist the setting.
+    // wired by commands in next task
+    #[allow(dead_code)]
+    pub fn enable(&self, app_data_dir: &Path) {
+        self.enabled.store(true, Ordering::Relaxed);
+        write_enabled(app_data_dir, true);
+    }
+
+    /// Signal any in-progress build to stop at the next session boundary.
+    // wired by commands in next task
+    #[allow(dead_code)]
+    pub fn cancel_build(&self) {
+        self.cancel.store(true, Ordering::Relaxed);
+    }
+
+    /// Returns true if the local model directory exists and contains at least one file.
+    // wired by commands in next task
+    #[allow(dead_code)]
+    pub fn model_present(&self) -> bool {
+        if !self.models_dir.exists() {
+            return false;
+        }
+        std::fs::read_dir(&self.models_dir)
+            .map(|mut d| d.next().is_some())
+            .unwrap_or(false)
+    }
+
+    /// Recursively sum file sizes under the models directory (returns 0 if absent).
+    // wired by commands in next task
+    #[allow(dead_code)]
+    pub fn model_size_bytes(&self) -> u64 {
+        dir_size(&self.models_dir)
+    }
+
+    /// Cancel any in-flight build, disable search, reset the embedder, and delete model files.
+    // wired by commands in next task
+    #[allow(dead_code)]
+    pub fn delete_model(&self, app_data_dir: &Path) -> Result<(), String> {
+        self.cancel_build();
+        self.enabled.store(false, Ordering::Relaxed);
+        write_enabled(app_data_dir, false);
+        *self.embedder.write().unwrap() = None;
+        let _ = std::fs::remove_dir_all(&self.models_dir);
+        Ok(())
+    }
+
     pub fn config(&self) -> BackendConfig {
         self.config.lock().unwrap().clone()
     }
@@ -210,8 +285,14 @@ impl SearchService {
         mut cfg: BackendConfig,
         app_data_dir: &std::path::Path,
     ) -> Result<(), String> {
+        let has_key = cfg.api_key.is_some();
         if let Some(key) = cfg.api_key.take() {
             write_key(&cfg, &key)?;
+        }
+        // When switching to OpenAI with a key present, auto-enable (no local download needed).
+        if cfg.provider == "openai" && (has_key || read_key(&cfg).is_some()) {
+            self.enabled.store(true, Ordering::Relaxed);
+            write_enabled(app_data_dir, true);
         }
         save_config(app_data_dir, &cfg);
         let new_dim = expected_dim(&cfg);
@@ -230,6 +311,38 @@ impl SearchService {
         *self.config.lock().unwrap() = cfg;
         Ok(())
     }
+}
+
+fn enabled_path(dir: &Path) -> PathBuf {
+    dir.join("search-enabled")
+}
+
+fn read_enabled(dir: &Path) -> bool {
+    std::fs::read_to_string(enabled_path(dir))
+        .map(|s| s.trim() == "1")
+        .unwrap_or(false)
+}
+
+fn write_enabled(dir: &Path, enabled: bool) {
+    let _ = std::fs::write(enabled_path(dir), if enabled { "1" } else { "0" });
+}
+
+fn dir_size(path: &Path) -> u64 {
+    if !path.exists() {
+        return 0;
+    }
+    let mut total = 0u64;
+    if let Ok(entries) = std::fs::read_dir(path) {
+        for entry in entries.flatten() {
+            let child = entry.path();
+            if child.is_dir() {
+                total += dir_size(&child);
+            } else if let Ok(meta) = child.metadata() {
+                total += meta.len();
+            }
+        }
+    }
+    total
 }
 
 fn truncate(s: &str, n: usize) -> String {

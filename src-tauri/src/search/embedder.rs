@@ -14,9 +14,11 @@ pub struct LocalEmbedder {
 }
 
 impl LocalEmbedder {
-    pub fn new() -> Result<Self, String> {
+    pub fn new(cache_dir: std::path::PathBuf) -> Result<Self, String> {
         let model = TextEmbedding::try_new(
-            InitOptions::new(EmbeddingModel::MultilingualE5Small).with_show_download_progress(true),
+            InitOptions::new(EmbeddingModel::MultilingualE5Small)
+                .with_cache_dir(cache_dir)
+                .with_show_download_progress(true),
         )
         .map_err(|e| format!("load embedding model: {e}"))?;
         Ok(Self { model })
@@ -104,12 +106,16 @@ impl Embedder for OpenAiEmbedder {
     }
 }
 
-pub fn build_embedder(cfg: &BackendConfig, api_key: Option<String>) -> Result<Box<dyn Embedder>, String> {
+pub fn build_embedder(
+    cfg: &BackendConfig,
+    api_key: Option<String>,
+    cache_dir: std::path::PathBuf,
+) -> Result<Box<dyn Embedder>, String> {
     match cfg.provider.as_str() {
         "openai" => {
             let key = api_key.ok_or_else(|| "OpenAI API key not set".to_string())?;
             Ok(Box::new(OpenAiEmbedder::new(key, cfg.model.clone())))
         }
-        _ => Ok(Box::new(LocalEmbedder::new()?)),
+        _ => Ok(Box::new(LocalEmbedder::new(cache_dir)?)),
     }
 }

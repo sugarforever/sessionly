@@ -40,6 +40,9 @@ pub struct IndexStatus {
     pub building: bool,
     pub last_built: Option<i64>,
     pub model: String,
+    pub enabled: bool,
+    pub model_present: bool,
+    pub model_size_bytes: u64,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
