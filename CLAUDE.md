@@ -102,7 +102,7 @@ Note: command arguments are camelCase on the JS side and snake_case in Rust — 
 - `markdown_export.rs` — session → Markdown export.
 - `hooks.rs` — install/uninstall/status of Claude Code hooks.
 
-Registered commands (`lib.rs`): `get_projects`, `get_session`, `get_version`, `get_native_theme`, `export_session_markdown`, `hooks_get_status`, `hooks_install`, `hooks_uninstall`, `hooks_is_installed`, `send_native_notification`.
+Registered commands (`lib.rs`): `get_projects`, `get_session`, `get_version`, `get_native_theme`, `export_session_markdown`, `hooks_get_status`, `hooks_install`, `hooks_uninstall`, `hooks_is_installed`, `send_native_notification`, `search_query`, `search_index_status`, `search_reindex`, `search_get_backend`, `search_set_backend`.
 
 Registered plugins: `opener`, `shell`, `dialog`, `fs`, `process`, `updater`, `notification`.
 
@@ -112,6 +112,8 @@ Registered plugins: `opener`, `shell`, `dialog`, `fs`, `process`, `updater`, `no
 - **App-owned settings live in browser `localStorage`** only: theme (`ThemeContext.tsx`) and notification prefs (`useNotifications.ts`). These are low-stakes and do not persist across a WebView/runtime change.
 
 This matters for upgrades: because real data lives in `~/.claude`, switching app versions (even Electron→Tauri) loses no session data — only the trivial localStorage prefs reset.
+
+**Exception (search index):** The search feature maintains a derived SQLite index (`search-index.sqlite`) in the app-data dir — FTS5 keyword + `sqlite-vec` vectors. It is a **rebuildable cache** (delete it and it rebuilds from `~/.claude`); it stores no authoritative session data, so the single-source-of-truth model is preserved. API keys for cloud embedding backends are stored in the OS keychain, not localStorage.
 
 ### Capabilities / permissions
 
