@@ -78,10 +78,14 @@ export function CommandPalette({ open, onClose }: { open: boolean; onClose: () =
         <div className="max-h-[50vh] overflow-y-auto p-1.5 scrollbar-thin">
           {status?.building && (
             <div className="px-3 py-2 text-xs text-muted-foreground">
-              Indexing… {status.indexed}/{status.total}
+              Indexing with {status.model}… {status.indexed}/{status.total}
             </div>
           )}
-          {!query.trim() ? (
+          {status && !status.enabled ? (
+            <div className="px-3 py-6 text-center text-sm text-muted-foreground">
+              Search is off — enable it in Settings.
+            </div>
+          ) : !query.trim() ? (
             <div className="px-3 py-6 text-center text-sm text-muted-foreground">
               Type to search your sessions
             </div>

@@ -47,6 +47,17 @@ export function SettingsPage() {
   const [apiKey, setApiKey] = useState('')
   const [idxStatus, setIdxStatus] = useState<IndexStatus | null>(null)
 
+  const mb = (b: number) => `${Math.max(1, Math.round(b / 1_000_000))} MB`
+
+  const refreshIdxStatus = useCallback(
+    () =>
+      api
+        .searchIndexStatus()
+        .then(setIdxStatus)
+        .catch(() => {}),
+    []
+  )
+
   useEffect(() => {
     api
       .searchGetBackend()
@@ -238,19 +249,70 @@ export function SettingsPage() {
             className="w-full rounded border bg-transparent px-3 py-2 text-sm outline-none"
           />
         )}
-        <div className="flex items-center gap-3 text-sm text-muted-foreground">
-          <span>
-            {idxStatus?.building
-              ? `Indexing… ${idxStatus.indexed}/${idxStatus.total}`
-              : `Indexed ${idxStatus?.indexed ?? 0} sessions`}
-          </span>
-          <button
-            onClick={() => api.searchReindex()}
-            className="rounded border px-3 py-1 text-xs hover:bg-accent"
-          >
-            Rebuild index
-          </button>
-        </div>
+        {idxStatus === null ? (
+          <p className="text-sm text-muted-foreground">Loading…</p>
+        ) : !idxStatus.enabled ? (
+          <div className="space-y-3">
+            <p className="text-sm text-muted-foreground">
+              Search is off. Semantic search runs locally and needs a one-time ~120MB model
+              download.
+            </p>
+            <button
+              onClick={async () => {
+                await api.searchEnable()
+                await refreshIdxStatus()
+              }}
+              className="rounded border px-3 py-1 text-xs hover:bg-accent"
+            >
+              Enable search & download
+            </button>
+          </div>
+        ) : idxStatus.building ? (
+          <div className="flex items-center gap-3 text-sm text-muted-foreground">
+            <span>
+              Indexing with {idxStatus.model}… {idxStatus.indexed}/{idxStatus.total}
+            </span>
+            <button
+              onClick={async () => {
+                await api.searchCancelBuild()
+                await refreshIdxStatus()
+              }}
+              className="rounded border px-3 py-1 text-xs hover:bg-accent"
+            >
+              Stop
+            </button>
+          </div>
+        ) : (
+          <div className="flex items-center gap-3 text-sm text-muted-foreground">
+            <span>Indexed {idxStatus.indexed} sessions</span>
+            <button
+              onClick={async () => {
+                await api.searchReindex()
+                await refreshIdxStatus()
+              }}
+              className="rounded border px-3 py-1 text-xs hover:bg-accent"
+            >
+              Rebuild index
+            </button>
+            {idxStatus.modelPresent && (
+              <button
+                onClick={async () => {
+                  if (
+                    !window.confirm(
+                      'Remove the downloaded search model? You can re-download it anytime.'
+                    )
+                  )
+                    return
+                  await api.searchDeleteModel()
+                  await refreshIdxStatus()
+                }}
+                className="rounded border px-3 py-1 text-xs hover:bg-accent"
+              >
+                Remove model ({mb(idxStatus.modelSizeBytes)})
+              </button>
+            )}
+          </div>
+        )}
       </div>
     </div>
   )

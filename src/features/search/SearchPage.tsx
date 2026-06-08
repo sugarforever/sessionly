@@ -45,15 +45,21 @@ export function SearchPage() {
       </div>
       {status?.building && (
         <p className="text-xs text-muted-foreground">
-          Indexing… {status.indexed}/{status.total}
+          Indexing with {status.model}… {status.indexed}/{status.total}
         </p>
       )}
-      {query.trim() && !loading && (
-        <p className="text-xs text-muted-foreground">
-          {results.length} result{results.length !== 1 ? 's' : ''}
-        </p>
+      {status && !status.enabled ? (
+        <p className="text-sm text-muted-foreground">Search is off — enable it in Settings.</p>
+      ) : (
+        <>
+          {query.trim() && !loading && (
+            <p className="text-xs text-muted-foreground">
+              {results.length} result{results.length !== 1 ? 's' : ''}
+            </p>
+          )}
+          <SearchResultList results={results} query={query} onPick={pick} variant="card" />
+        </>
       )}
-      <SearchResultList results={results} query={query} onPick={pick} variant="card" />
     </div>
   )
 }
