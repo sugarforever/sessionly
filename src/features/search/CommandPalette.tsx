@@ -76,7 +76,7 @@ export function CommandPalette({ open, onClose }: { open: boolean; onClose: () =
           {loading && <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />}
         </div>
         <div className="max-h-[50vh] overflow-y-auto p-1.5 scrollbar-thin">
-          {status?.building && (
+          {status?.building && status.enabled && (
             <div className="px-3 py-2 text-xs text-muted-foreground">
               Indexing with {status.model}… {status.indexed}/{status.total}
             </div>

@@ -63,16 +63,10 @@ export function SettingsPage() {
       .searchGetBackend()
       .then(setBackend)
       .catch(() => {})
-    const id = window.setInterval(
-      () =>
-        api
-          .searchIndexStatus()
-          .then(setIdxStatus)
-          .catch(() => {}),
-      2000
-    )
+    refreshIdxStatus()
+    const id = window.setInterval(refreshIdxStatus, 2000)
     return () => window.clearInterval(id)
-  }, [])
+  }, [refreshIdxStatus])
 
   const saveBackend = async (provider: 'local' | 'openai') => {
     const cfg: BackendConfig =

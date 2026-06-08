@@ -43,7 +43,7 @@ export function SearchPage() {
         />
         {loading && <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />}
       </div>
-      {status?.building && (
+      {status?.building && status.enabled && (
         <p className="text-xs text-muted-foreground">
           Indexing with {status.model}… {status.indexed}/{status.total}
         </p>
