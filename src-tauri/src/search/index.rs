@@ -238,7 +238,7 @@ fn make_snippet(text: &str, query: &str) -> String {
     let term = query.split_whitespace().next().unwrap_or("").to_lowercase();
     let pos = if term.is_empty() { None } else { lower.find(&term) };
     let chars: Vec<char> = text.chars().collect();
-    let center = pos.map(|byte| text[..byte].chars().count()).unwrap_or(0);
+    let center = pos.map(|byte| lower[..byte].chars().count()).unwrap_or(0);
     let start = center.saturating_sub(W / 2);
     let end = (start + W).min(chars.len());
     let mut s: String = chars[start..end].iter().collect();
@@ -277,6 +277,14 @@ mod tests {
         assert_eq!(idx.chunk_count().unwrap(), 1);
         idx.delete_session("s1").unwrap();
         assert_eq!(idx.chunk_count().unwrap(), 0);
+    }
+
+    #[test]
+    fn make_snippet_handles_multibyte_lowercase_without_panic() {
+        // 'İ' (U+0130) lowercases to 2 bytes longer; a naive text[..byte] slice would panic.
+        let text = "İé redirect here";
+        let s = make_snippet(text, "redirect");
+        assert!(s.to_lowercase().contains("redirect"));
     }
 
     #[test]
