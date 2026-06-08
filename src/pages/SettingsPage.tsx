@@ -1,6 +1,7 @@
 import { useEffect, useState, useCallback, useRef } from 'react'
 import { api } from '@/types/api'
 import type { HookStatus } from '@/types/session-types'
+import type { BackendConfig, IndexStatus } from '@/types/search'
 import { useNotificationContext } from '@/contexts/NotificationContext'
 
 function Toggle({
@@ -39,6 +40,38 @@ export function SettingsPage() {
 
   const { prefs, updatePrefs, sendTest } = useNotificationContext()
 
+  const [backend, setBackend] = useState<BackendConfig>({
+    provider: 'local',
+    model: 'multilingual-e5-small',
+  })
+  const [apiKey, setApiKey] = useState('')
+  const [idxStatus, setIdxStatus] = useState<IndexStatus | null>(null)
+
+  useEffect(() => {
+    api
+      .searchGetBackend()
+      .then(setBackend)
+      .catch(() => {})
+    const id = window.setInterval(
+      () =>
+        api
+          .searchIndexStatus()
+          .then(setIdxStatus)
+          .catch(() => {}),
+      2000
+    )
+    return () => window.clearInterval(id)
+  }, [])
+
+  const saveBackend = async (provider: 'local' | 'openai') => {
+    const cfg: BackendConfig =
+      provider === 'openai'
+        ? { provider, model: 'text-embedding-3-small', apiKey: apiKey || undefined }
+        : { provider, model: 'multilingual-e5-small' }
+    await api.searchSetBackend(cfg)
+    setBackend({ provider: cfg.provider, model: cfg.model })
+  }
+
   const refresh = useCallback(async () => {
     const status = await api.hooksGetStatus()
     setHookStatus(status)
@@ -76,7 +109,7 @@ export function SettingsPage() {
     <div className="space-y-8">
       <div className="space-y-2">
         <h1 className="text-4xl font-bold tracking-tight">Settings</h1>
-        <p className="text-lg text-muted-foreground">Configure hooks and notifications</p>
+        <p className="text-lg text-muted-foreground">Configure hooks, notifications, and search</p>
       </div>
 
       {/* Hooks Section */}
@@ -171,6 +204,52 @@ export function SettingsPage() {
             Send Test Notification
           </button>
           {testResult && <span className="text-sm text-muted-foreground">{testResult}</span>}
+        </div>
+      </div>
+
+      {/* Search Section */}
+      <div className="rounded-lg border p-6 space-y-4">
+        <h2 className="text-xl font-semibold">Search</h2>
+        <p className="text-sm text-muted-foreground">
+          Choose how sessions are embedded for semantic search. Local runs on your machine (private,
+          free).
+        </p>
+        <div className="flex gap-2">
+          <button
+            onClick={() => saveBackend('local')}
+            className={`rounded border px-4 py-2 text-sm ${backend.provider === 'local' ? 'bg-accent' : 'hover:bg-accent'}`}
+          >
+            Local · multilingual-e5-small
+          </button>
+          <button
+            onClick={() => saveBackend('openai')}
+            className={`rounded border px-4 py-2 text-sm ${backend.provider === 'openai' ? 'bg-accent' : 'hover:bg-accent'}`}
+          >
+            OpenAI · text-embedding-3-small
+          </button>
+        </div>
+        {backend.provider === 'openai' && (
+          <input
+            type="password"
+            value={apiKey}
+            onChange={(e) => setApiKey(e.target.value)}
+            onBlur={() => saveBackend('openai')}
+            placeholder="OpenAI API key (stored in your OS keychain)"
+            className="w-full rounded border bg-transparent px-3 py-2 text-sm outline-none"
+          />
+        )}
+        <div className="flex items-center gap-3 text-sm text-muted-foreground">
+          <span>
+            {idxStatus?.building
+              ? `Indexing… ${idxStatus.indexed}/${idxStatus.total}`
+              : `Indexed ${idxStatus?.indexed ?? 0} sessions`}
+          </span>
+          <button
+            onClick={() => api.searchReindex()}
+            className="rounded border px-3 py-1 text-xs hover:bg-accent"
+          >
+            Rebuild index
+          </button>
         </div>
       </div>
     </div>
