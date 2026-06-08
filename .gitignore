@@ -18,6 +18,9 @@ DESIGN_DOC.md
 src-tauri/target/
 src-tauri/gen/
 
+# fastembed model cache (downloaded at build/run time)
+.fastembed_cache/
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json
