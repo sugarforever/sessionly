@@ -156,6 +156,9 @@ impl SearchService {
         session_id: &str,
         file: &std::path::Path,
     ) -> Result<(), String> {
+        if !self.is_enabled() {
+            return Ok(());
+        }
         let Some((session, _)) = session_store::parse_session_file(file) else {
             return Ok(());
         };
