@@ -29,6 +29,7 @@ interface SessionsState {
   currentSession: Session | null
   selectedSessionId: string | null
   selectedProjectEncoded: string | null
+  targetMessageUuid: string | null
   isLoading: boolean
   isLoadingSession: boolean
   error: string | null
@@ -60,6 +61,7 @@ const initialState: SessionsState = {
   currentSession: null,
   selectedSessionId: null,
   selectedProjectEncoded: null,
+  targetMessageUuid: null,
   isLoading: false,
   isLoadingSession: false,
   error: null,
@@ -111,14 +113,20 @@ const sessionsSlice = createSlice({
   reducers: {
     selectSession: (
       state,
-      action: PayloadAction<{ sessionId: string; projectEncoded: string } | null>
+      action: PayloadAction<{
+        sessionId: string
+        projectEncoded: string
+        messageUuid?: string
+      } | null>
     ) => {
       if (action.payload) {
         state.selectedSessionId = action.payload.sessionId
         state.selectedProjectEncoded = action.payload.projectEncoded
+        state.targetMessageUuid = action.payload.messageUuid ?? null
       } else {
         state.selectedSessionId = null
         state.selectedProjectEncoded = null
+        state.targetMessageUuid = null
         state.currentSession = null
       }
     },
@@ -228,3 +236,6 @@ export const selectHiddenCount = createSelector(
     sessions: hiddenSessions.length,
   })
 )
+
+export const selectTargetMessageUuid = (state: RootState): string | null =>
+  state.sessions.targetMessageUuid

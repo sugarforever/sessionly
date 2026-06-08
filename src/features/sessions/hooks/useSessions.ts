@@ -12,6 +12,7 @@ import {
   toggleShowHidden,
   selectVisibleProjectGroups,
   selectHiddenCount,
+  selectTargetMessageUuid,
 } from '@/store/slices/sessionsSlice'
 
 export function useSessions() {
@@ -28,6 +29,7 @@ export function useSessions() {
   const hiddenSessions = useAppSelector((state) => state.sessions.hiddenSessions)
   const visibleProjectGroups = useAppSelector(selectVisibleProjectGroups)
   const hiddenCount = useAppSelector(selectHiddenCount)
+  const targetMessageUuid = useAppSelector(selectTargetMessageUuid)
 
   useEffect(() => {
     dispatch(fetchSessions())
@@ -42,8 +44,8 @@ export function useSessions() {
   }, [dispatch, selectedSessionId, selectedProjectEncoded])
 
   const handleSelectSession = useCallback(
-    (sessionId: string, projectEncoded: string) => {
-      dispatch(selectSession({ sessionId, projectEncoded }))
+    (sessionId: string, projectEncoded: string, messageUuid?: string) => {
+      dispatch(selectSession({ sessionId, projectEncoded, messageUuid }))
     },
     [dispatch]
   )
@@ -57,6 +59,7 @@ export function useSessions() {
     currentSession,
     selectedSessionId,
     selectedProjectEncoded,
+    targetMessageUuid,
     isLoading,
     isLoadingSession,
     error,

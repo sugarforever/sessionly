@@ -1,3 +1,4 @@
+import { useEffect } from 'react'
 import { Loader2, MessageSquareOff } from 'lucide-react'
 import type { Session } from '@/types/session-types'
 import { SessionHeader } from './SessionHeader'
@@ -7,9 +8,22 @@ interface SessionViewProps {
   session: Session | null
   isLoading: boolean
   error: string | null
+  targetMessageUuid?: string | null
 }
 
-export function SessionView({ session, isLoading, error }: SessionViewProps) {
+export function SessionView({ session, isLoading, error, targetMessageUuid }: SessionViewProps) {
+  useEffect(() => {
+    if (!targetMessageUuid) return
+    const el = document.getElementById(`msg-${targetMessageUuid}`)
+    if (!el) return
+    el.scrollIntoView({ behavior: 'smooth', block: 'center' })
+    el.classList.add('ring-2', 'ring-amber-400/60', 'rounded-md')
+    const t = window.setTimeout(
+      () => el.classList.remove('ring-2', 'ring-amber-400/60', 'rounded-md'),
+      2000
+    )
+    return () => window.clearTimeout(t)
+  }, [targetMessageUuid, session])
   if (isLoading) {
     return (
       <div className="flex h-full items-center justify-center bg-background">

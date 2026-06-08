@@ -7,6 +7,7 @@ export function SessionsPage() {
     projectGroups,
     currentSession,
     selectedSessionId,
+    targetMessageUuid,
     isLoading,
     isLoadingSession,
     error,
@@ -44,7 +45,12 @@ export function SessionsPage() {
         />
       </div>
       <div className="flex-1 overflow-hidden">
-        <SessionView session={currentSession} isLoading={isLoadingSession} error={error} />
+        <SessionView
+          session={currentSession}
+          isLoading={isLoadingSession}
+          error={error}
+          targetMessageUuid={targetMessageUuid}
+        />
       </div>
     </div>
   )

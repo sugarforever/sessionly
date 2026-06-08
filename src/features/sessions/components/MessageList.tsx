@@ -35,6 +35,7 @@ export function MessageList({ messages, subagents, scrollToBottom = false }: Mes
         {messages.map((message, index) => (
           <div
             key={message.uuid}
+            id={`msg-${message.uuid}`}
             style={{ contentVisibility: 'auto', containIntrinsicSize: 'auto 100px' }}
           >
             <MessageBubble
