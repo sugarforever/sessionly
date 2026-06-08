@@ -40,6 +40,7 @@ pub struct HookEventPayload {
 pub struct SessionMonitor {
     sessions: Mutex<HashMap<String, TrackedSession>>,
     app_handle: AppHandle,
+    search: std::sync::Mutex<Option<std::sync::Arc<crate::search::SearchService>>>,
 }
 
 impl SessionMonitor {
@@ -47,7 +48,12 @@ impl SessionMonitor {
         Self {
             sessions: Mutex::new(HashMap::new()),
             app_handle,
+            search: std::sync::Mutex::new(None),
         }
+    }
+
+    pub fn set_search(&self, search: std::sync::Arc<crate::search::SearchService>) {
+        *self.search.lock().unwrap() = Some(search);
     }
 
     pub fn handle_hook_event(&self, payload: HookEventPayload) {
@@ -99,6 +105,26 @@ impl SessionMonitor {
             project,
         };
         let _ = self.app_handle.emit("session-state-changed", &info);
+
+        if new_state == SessionState::Completed {
+            if let Some(search) = self.search.lock().unwrap().clone() {
+                if let Some(cwd) = cwd.clone() {
+                    let session_id = info.session_id.clone();
+                    std::thread::spawn(move || {
+                        // Find the encoded project dir whose decoded path matches cwd.
+                        if let Some(project_encoded) = crate::session_store::list_projects()
+                            .into_iter()
+                            .find(|p| crate::session_store::decode_project_path(p) == cwd)
+                        {
+                            let file = crate::session_store::get_projects_dir()
+                                .join(&project_encoded)
+                                .join(format!("{session_id}.jsonl"));
+                            let _ = search.index_one(&project_encoded, &session_id, &file);
+                        }
+                    });
+                }
+            }
+        }
     }
 
     fn compute_aggregate(&self, sessions: &HashMap<String, TrackedSession>) -> SessionState {

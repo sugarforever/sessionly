@@ -13,6 +13,7 @@ use tauri::Manager;
 pub struct AppState {
     pub session_monitor: Arc<SessionMonitor>,
     pub hook_server: Option<hooks::HookServer>,
+    pub search: Arc<search::SearchService>,
 }
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -29,6 +30,14 @@ pub fn run() {
             let handle = app.handle().clone();
 
             let monitor = Arc::new(SessionMonitor::new(handle.clone()));
+
+            let app_data_dir = app.path().app_data_dir().expect("app data dir");
+            let search = Arc::new(
+                search::SearchService::new(app_data_dir).expect("init search service"),
+            );
+            monitor.set_search(search.clone());
+            let search_build = search.clone();
+            std::thread::spawn(move || { let _ = search_build.build(); });
 
             // Start hook server
             let hook_server = match hooks::HookServer::start(monitor.clone()) {
@@ -59,6 +68,7 @@ pub fn run() {
             app.manage(AppState {
                 session_monitor: monitor,
                 hook_server,
+                search: search.clone(),
             });
 
             Ok(())
@@ -74,6 +84,11 @@ pub fn run() {
             commands::hooks_uninstall,
             commands::hooks_is_installed,
             commands::send_native_notification,
+            commands::search_query,
+            commands::search_index_status,
+            commands::search_reindex,
+            commands::search_get_backend,
+            commands::search_set_backend,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

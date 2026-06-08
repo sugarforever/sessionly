@@ -27,6 +27,7 @@ fn vec_bytes(v: &[f32]) -> Vec<u8> {
 
 pub struct SearchIndex {
     conn: Mutex<Connection>,
+    #[allow(dead_code)] // reserved for dimension-change detection
     dim: usize,
 }
 
@@ -35,9 +36,14 @@ pub struct SearchIndex {
 /// SQLite deduplicates identical function pointers.
 fn register_vec_extension() {
     unsafe {
-        rusqlite::ffi::sqlite3_auto_extension(Some(std::mem::transmute(
-            sqlite_vec::sqlite3_vec_init as *const (),
-        )));
+        rusqlite::ffi::sqlite3_auto_extension(Some(std::mem::transmute::<
+            *const (),
+            unsafe extern "C" fn(
+                *mut rusqlite::ffi::sqlite3,
+                *mut *mut std::os::raw::c_char,
+                *const rusqlite::ffi::sqlite3_api_routines,
+            ) -> std::os::raw::c_int,
+        >(sqlite_vec::sqlite3_vec_init as *const ())));
     }
 }
 
@@ -96,6 +102,7 @@ impl SearchIndex {
         })
     }
 
+    #[allow(dead_code)] // reserved for backend-switch flows
     pub fn dim(&self) -> usize {
         self.dim
     }
@@ -157,6 +164,7 @@ impl SearchIndex {
         Ok(())
     }
 
+    #[allow(dead_code)] // reserved for backend-switch flows
     pub fn chunk_count(&self) -> rusqlite::Result<usize> {
         let conn = self.conn.lock().unwrap();
         let n: i64 = conn.query_row("SELECT COUNT(*) FROM chunks", [], |r| r.get(0))?;
@@ -184,6 +192,7 @@ impl SearchIndex {
     }
 
     /// Wipe everything (used when the embedding model/dimension changes).
+    #[allow(dead_code)] // reserved for backend-switch flows
     pub fn clear_all(&self) -> rusqlite::Result<()> {
         let conn = self.conn.lock().unwrap();
         // Delete content rows first, then rebuild the FTS index from the now-empty
@@ -250,8 +259,8 @@ impl SearchIndex {
 
             if let Some(p) = &filters.project_encoded { if &project_encoded != p { continue } }
             if let Some(rl) = &filters.role { if &role != rl { continue } }
-            if let Some(since) = filters.since { if start_time.map_or(true, |t| t < since) { continue } }
-            if let Some(until) = filters.until { if start_time.map_or(true, |t| t > until) { continue } }
+            if let Some(since) = filters.since { if start_time.is_none_or(|t| t < since) { continue } }
+            if let Some(until) = filters.until { if start_time.is_none_or(|t| t > until) { continue } }
 
             hits.push(SearchHit {
                 session_id, project_encoded, project, session_title, message_uuid, role,

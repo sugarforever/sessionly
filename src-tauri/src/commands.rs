@@ -1,7 +1,10 @@
+use crate::search::{BackendConfig, IndexStatus, SearchFilters, SearchHit};
+use crate::search::SearchService;
 use crate::session_store;
 use crate::session_types::{ProjectGroup, Session};
 use crate::AppState;
-use tauri::State;
+use std::sync::Arc;
+use tauri::{Manager, State};
 
 #[tauri::command]
 pub async fn get_projects() -> Vec<ProjectGroup> {
@@ -70,6 +73,55 @@ pub fn hooks_uninstall() -> Result<(), String> {
 #[tauri::command]
 pub fn hooks_is_installed() -> bool {
     crate::hooks::is_hooks_installed()
+}
+
+#[tauri::command]
+pub async fn search_query(
+    state: State<'_, AppState>,
+    query: String,
+    filters: Option<SearchFilters>,
+    limit: Option<usize>,
+) -> Result<Vec<SearchHit>, String> {
+    let svc: Arc<SearchService> = state.search.clone();
+    let filters = filters.unwrap_or_default();
+    let limit = limit.unwrap_or(40);
+    tokio::task::spawn_blocking(move || svc.query(&query, &filters, limit))
+        .await
+        .map_err(|e| e.to_string())?
+}
+
+#[tauri::command]
+pub fn search_index_status(state: State<'_, AppState>) -> IndexStatus {
+    state.search.status()
+}
+
+#[tauri::command]
+pub async fn search_reindex(state: State<'_, AppState>) -> Result<(), String> {
+    let svc = state.search.clone();
+    tokio::task::spawn_blocking(move || svc.build())
+        .await
+        .map_err(|e| e.to_string())?
+}
+
+#[tauri::command]
+pub fn search_get_backend(state: State<'_, AppState>) -> BackendConfig {
+    state.search.config()
+}
+
+#[tauri::command]
+pub async fn search_set_backend(
+    app: tauri::AppHandle,
+    state: State<'_, AppState>,
+    config: BackendConfig,
+) -> Result<(), String> {
+    let dir = app.path().app_data_dir().map_err(|e| e.to_string())?;
+    let svc = state.search.clone();
+    let res = tokio::task::spawn_blocking(move || svc.set_backend(config, &dir))
+        .await
+        .map_err(|e| e.to_string())?;
+    let svc2 = state.search.clone();
+    std::thread::spawn(move || { let _ = svc2.build(); });
+    res
 }
 
 #[tauri::command]
