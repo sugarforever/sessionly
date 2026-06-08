@@ -1,3 +1,5 @@
+use crate::search::rrf::rrf_merge;
+use crate::search::types::{SearchFilters, SearchHit};
 use rusqlite::{Connection, OptionalExtension};
 use std::path::Path;
 use std::sync::Mutex;
@@ -160,6 +162,89 @@ impl SearchIndex {
         let n: i64 = conn.query_row("SELECT COUNT(*) FROM chunks", [], |r| r.get(0))?;
         Ok(n as usize)
     }
+
+    pub fn query(
+        &self,
+        query_text: &str,
+        query_vec: &[f32],
+        filters: &SearchFilters,
+        limit: usize,
+    ) -> rusqlite::Result<Vec<SearchHit>> {
+        let conn = self.conn.lock().unwrap();
+        let k = 50usize;
+
+        let mut kw_ids: Vec<String> = Vec::new();
+        if !query_text.trim().is_empty() {
+            let mut stmt = conn.prepare(
+                "SELECT c.id FROM chunks_fts f JOIN chunks c ON c.id = f.rowid
+                 WHERE chunks_fts MATCH ?1 ORDER BY bm25(chunks_fts) LIMIT ?2",
+            )?;
+            let fts_query = format!("\"{}\"", query_text.replace('"', " "));
+            kw_ids = stmt
+                .query_map(rusqlite::params![fts_query, k as i64], |r| r.get::<_, i64>(0))?
+                .filter_map(Result::ok)
+                .map(|id| id.to_string())
+                .collect();
+        }
+
+        let mut stmt = conn.prepare(
+            "SELECT chunk_id FROM vec_chunks WHERE embedding MATCH ?1 AND k = ?2 ORDER BY distance",
+        )?;
+        let vec_ids: Vec<String> = stmt
+            .query_map(rusqlite::params![vec_bytes(query_vec), k as i64], |r| r.get::<_, i64>(0))?
+            .filter_map(Result::ok)
+            .map(|id| id.to_string())
+            .collect();
+
+        let fused = rrf_merge(&[kw_ids, vec_ids], 60.0);
+
+        let mut hits = Vec::new();
+        for (id_str, score) in fused.into_iter() {
+            let id: i64 = id_str.parse().unwrap_or(-1);
+            let row = conn
+                .query_row(
+                    "SELECT session_id, project_encoded, project, session_title, message_uuid, role, text, start_time
+                     FROM chunks WHERE id = ?1",
+                    [id],
+                    |r| Ok((
+                        r.get::<_, String>(0)?, r.get::<_, String>(1)?, r.get::<_, String>(2)?,
+                        r.get::<_, String>(3)?, r.get::<_, String>(4)?, r.get::<_, String>(5)?,
+                        r.get::<_, String>(6)?, r.get::<_, Option<i64>>(7)?,
+                    )),
+                )
+                .optional()?;
+            let Some((session_id, project_encoded, project, session_title, message_uuid, role, text, start_time)) = row else { continue };
+
+            if let Some(p) = &filters.project_encoded { if &project_encoded != p { continue } }
+            if let Some(rl) = &filters.role { if &role != rl { continue } }
+            if let Some(since) = filters.since { if start_time.map_or(true, |t| t < since) { continue } }
+            if let Some(until) = filters.until { if start_time.map_or(true, |t| t > until) { continue } }
+
+            hits.push(SearchHit {
+                session_id, project_encoded, project, session_title, message_uuid, role,
+                snippet: make_snippet(&text, query_text),
+                score,
+            });
+            if hits.len() >= limit { break }
+        }
+        Ok(hits)
+    }
+}
+
+/// Window the text around the first query-term hit; fall back to a prefix.
+fn make_snippet(text: &str, query: &str) -> String {
+    const W: usize = 160;
+    let lower = text.to_lowercase();
+    let term = query.split_whitespace().next().unwrap_or("").to_lowercase();
+    let pos = if term.is_empty() { None } else { lower.find(&term) };
+    let chars: Vec<char> = text.chars().collect();
+    let center = pos.map(|byte| text[..byte].chars().count()).unwrap_or(0);
+    let start = center.saturating_sub(W / 2);
+    let end = (start + W).min(chars.len());
+    let mut s: String = chars[start..end].iter().collect();
+    if start > 0 { s = format!("…{s}") }
+    if end < chars.len() { s = format!("{s}…") }
+    s.trim().to_string()
 }
 
 #[cfg(test)]
@@ -192,5 +277,24 @@ mod tests {
         assert_eq!(idx.chunk_count().unwrap(), 1);
         idx.delete_session("s1").unwrap();
         assert_eq!(idx.chunk_count().unwrap(), 0);
+    }
+
+    #[test]
+    fn hybrid_query_returns_keyword_hit() {
+        let idx = SearchIndex::open_in_memory(3).unwrap();
+        let rows = vec![
+            ChunkRow { session_id: "s1".into(), project_encoded: "p".into(), project: "proj".into(),
+                session_title: "login".into(), message_uuid: "m1".into(), role: "user".into(),
+                start_time: Some(1), text: "the redirect loop in auth".into(), embedding: vec![1.0,0.0,0.0] },
+            ChunkRow { session_id: "s2".into(), project_encoded: "p".into(), project: "proj".into(),
+                session_title: "misc".into(), message_uuid: "m2".into(), role: "user".into(),
+                start_time: Some(1), text: "unrelated content here".into(), embedding: vec![0.0,1.0,0.0] },
+        ];
+        idx.replace_session("s1", &rows[0..1]).unwrap();
+        idx.replace_session("s2", &rows[1..2]).unwrap();
+        let hits = idx.query("redirect", &[0.9_f32,0.1,0.0], &Default::default(), 10).unwrap();
+        assert!(!hits.is_empty());
+        assert_eq!(hits[0].session_id, "s1");
+        assert!(hits[0].snippet.to_lowercase().contains("redirect"));
     }
 }
