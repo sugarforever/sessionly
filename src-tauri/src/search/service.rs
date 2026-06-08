@@ -10,6 +10,7 @@ use std::sync::{Arc, Mutex, RwLock};
 
 const KEYRING_SERVICE: &str = "app.sessionly.search";
 const MAX_CHARS: usize = 1200;
+const INDEX_CONCURRENCY: usize = 5;
 
 pub struct SearchService {
     index: RwLock<Arc<SearchIndex>>,
@@ -136,17 +137,48 @@ impl SearchService {
                 files.push((p.clone(), f));
             }
         }
+        // Recency-first: newest sessions become searchable soonest. Best-effort mtime sort.
+        files.sort_by_key(|(_, f)| {
+            std::cmp::Reverse(f.metadata().and_then(|m| m.modified()).ok())
+        });
+
         self.total.store(files.len(), Ordering::Relaxed);
         self.indexed.store(0, Ordering::Relaxed);
-        for (project_encoded, file) in files {
-            if self.cancel.load(Ordering::Relaxed) {
-                break;
+
+        // Pre-load the embedder ONCE before fan-out so workers don't all trigger
+        // the model download/load concurrently. Abort the build if it fails.
+        self.ensure_embedder()?;
+
+        let workers = INDEX_CONCURRENCY.min(
+            std::thread::available_parallelism()
+                .map(|n| n.get())
+                .unwrap_or(1)
+                .max(1),
+        );
+
+        let this = self;
+        let next = AtomicUsize::new(0);
+        let files_ref = &files;
+        std::thread::scope(|scope| {
+            for _ in 0..workers {
+                let next = &next;
+                scope.spawn(move || loop {
+                    if this.cancel.load(Ordering::Relaxed) {
+                        break;
+                    }
+                    let i = next.fetch_add(1, Ordering::Relaxed);
+                    if i >= files_ref.len() {
+                        break;
+                    }
+                    let (project_encoded, file) = &files_ref[i];
+                    if let Some(session_id) = file.file_stem().and_then(|s| s.to_str()) {
+                        let _ = this.index_one(project_encoded, session_id, file);
+                    }
+                    this.indexed.fetch_add(1, Ordering::Relaxed);
+                });
             }
-            if let Some(session_id) = file.file_stem().and_then(|s| s.to_str()) {
-                let _ = self.index_one(&project_encoded, session_id, &file);
-            }
-            self.indexed.fetch_add(1, Ordering::Relaxed);
-        }
+        });
+
         Ok(())
     }
 
