@@ -46,6 +46,8 @@ export function SettingsPage() {
   })
   const [apiKey, setApiKey] = useState('')
   const [idxStatus, setIdxStatus] = useState<IndexStatus | null>(null)
+  const [projects, setProjects] = useState<{ project: string; projectEncoded: string }[]>([])
+  const [scope, setScope] = useState<string[] | null>(null) // null = all
 
   const mb = (b: number) => `${Math.max(1, Math.round(b / 1_000_000))} MB`
 
@@ -67,6 +69,32 @@ export function SettingsPage() {
     const id = window.setInterval(refreshIdxStatus, 2000)
     return () => window.clearInterval(id)
   }, [refreshIdxStatus])
+
+  useEffect(() => {
+    api
+      .sessionsGetAll()
+      .then((groups) =>
+        setProjects(groups.map((g) => ({ project: g.project, projectEncoded: g.projectEncoded })))
+      )
+      .catch(() => {})
+    api
+      .searchGetScope()
+      .then(setScope)
+      .catch(() => {})
+  }, [])
+
+  const toggleProject = async (encoded: string) => {
+    const allEncoded = projects.map((p) => p.projectEncoded)
+    const current = scope === null ? allEncoded : scope
+    const nextSet = current.includes(encoded)
+      ? current.filter((e) => e !== encoded)
+      : [...current, encoded]
+    // if everything is selected, store null (= all) instead of an explicit full list
+    const next = nextSet.length === allEncoded.length ? null : nextSet
+    setScope(next)
+    await api.searchSetScope(next)
+    refreshIdxStatus()
+  }
 
   const saveBackend = async (provider: 'local' | 'openai') => {
     const cfg: BackendConfig =
@@ -305,6 +333,47 @@ export function SettingsPage() {
                 Remove model ({mb(idxStatus.modelSizeBytes)})
               </button>
             )}
+          </div>
+        )}
+
+        {projects.length > 0 && (
+          <div className="space-y-2">
+            <div className="flex items-center justify-between">
+              <span className="text-sm font-medium">Projects to index</span>
+              <button
+                onClick={async () => {
+                  setScope(null)
+                  await api.searchSetScope(null)
+                  refreshIdxStatus()
+                }}
+                className="text-xs text-muted-foreground hover:text-foreground"
+              >
+                Select all
+              </button>
+            </div>
+            <div className="max-h-44 overflow-y-auto rounded border border-border p-2 space-y-1 scrollbar-thin">
+              {projects.map((p) => {
+                const included = scope === null || scope.includes(p.projectEncoded)
+                return (
+                  <label
+                    key={p.projectEncoded}
+                    className="flex items-center gap-2 text-sm cursor-pointer hover:bg-accent/50 rounded px-1 py-0.5"
+                  >
+                    <input
+                      type="checkbox"
+                      checked={included}
+                      onChange={() => toggleProject(p.projectEncoded)}
+                    />
+                    <span className="truncate">{p.project}</span>
+                  </label>
+                )
+              })}
+            </div>
+            <p className="text-xs text-muted-foreground">
+              {scope === null
+                ? 'Indexing all projects.'
+                : `Indexing ${scope.length} of ${projects.length} projects.`}
+            </p>
           </div>
         )}
       </div>
