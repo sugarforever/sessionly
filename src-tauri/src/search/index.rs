@@ -143,6 +143,26 @@ impl SearchIndex {
             conn.execute("DELETE FROM vec_chunks WHERE chunk_id = ?1", [id])?;
         }
         conn.execute("DELETE FROM chunks WHERE session_id = ?1", [session_id])?;
+        conn.execute("DELETE FROM session_hash WHERE session_id = ?1", [session_id])?;
+        Ok(())
+    }
+
+    /// Remove every indexed session whose project_encoded is NOT in `scope`.
+    pub fn retain_projects(&self, scope: &[String]) -> rusqlite::Result<()> {
+        let ids: Vec<String> = {
+            let conn = self.conn.lock().unwrap();
+            let mut stmt =
+                conn.prepare("SELECT DISTINCT session_id, project_encoded FROM chunks")?;
+            let rows =
+                stmt.query_map([], |r| Ok((r.get::<_, String>(0)?, r.get::<_, String>(1)?)))?;
+            rows.filter_map(Result::ok)
+                .filter(|(_, proj)| !scope.iter().any(|s| s == proj))
+                .map(|(sid, _)| sid)
+                .collect()
+        }; // conn lock dropped here BEFORE delete_session re-locks
+        for id in ids {
+            self.delete_session(&id)?;
+        }
         Ok(())
     }
 

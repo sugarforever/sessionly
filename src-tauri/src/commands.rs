@@ -182,6 +182,32 @@ pub fn search_cancel_build(state: State<'_, AppState>) -> Result<(), String> {
 }
 
 #[tauri::command]
+pub fn search_get_scope(state: State<'_, AppState>) -> Option<Vec<String>> {
+    state.search.as_ref().and_then(|s| s.get_scope())
+}
+
+#[tauri::command]
+pub async fn search_set_scope(
+    app: tauri::AppHandle,
+    state: State<'_, AppState>,
+    projects: Option<Vec<String>>,
+) -> Result<(), String> {
+    let Some(svc) = state.search.clone() else {
+        return Err("search unavailable".into());
+    };
+    let dir = app.path().app_data_dir().map_err(|e| e.to_string())?;
+    let svc2 = svc.clone();
+    tokio::task::spawn_blocking(move || svc.set_scope(projects, &dir))
+        .await
+        .map_err(|e| e.to_string())??;
+    // re-index to fill in any newly in-scope sessions (hash-skip keeps existing)
+    std::thread::spawn(move || {
+        let _ = svc2.build();
+    });
+    Ok(())
+}
+
+#[tauri::command]
 pub async fn search_delete_model(
     app: tauri::AppHandle,
     state: State<'_, AppState>,

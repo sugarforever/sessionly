@@ -36,4 +36,6 @@ export const api = {
   searchEnable: () => invoke<void>('search_enable'),
   searchCancelBuild: () => invoke<void>('search_cancel_build'),
   searchDeleteModel: () => invoke<void>('search_delete_model'),
+  searchGetScope: () => invoke<string[] | null>('search_get_scope'),
+  searchSetScope: (projects: string[] | null) => invoke<void>('search_set_scope', { projects }),
 }

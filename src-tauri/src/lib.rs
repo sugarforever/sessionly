@@ -101,6 +101,8 @@ pub fn run() {
             commands::search_enable,
             commands::search_cancel_build,
             commands::search_delete_model,
+            commands::search_get_scope,
+            commands::search_set_scope,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

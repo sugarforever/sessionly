@@ -23,6 +23,7 @@ pub struct SearchService {
     total: AtomicUsize,
     enabled: AtomicBool,
     cancel: AtomicBool,
+    index_scope: Mutex<Option<Vec<String>>>,
 }
 
 fn expected_dim(cfg: &BackendConfig) -> usize {
@@ -55,6 +56,7 @@ impl SearchService {
             total: AtomicUsize::new(0),
             enabled: AtomicBool::new(enabled),
             cancel: AtomicBool::new(false),
+            index_scope: Mutex::new(read_scope(&app_data_dir)),
         })
     }
 
@@ -131,8 +133,14 @@ impl SearchService {
 
     fn build_inner(&self) -> Result<(), String> {
         let projects = session_store::list_projects();
+        let scope = self.index_scope.lock().unwrap().clone();
         let mut files = Vec::new();
         for p in &projects {
+            if let Some(sel) = &scope {
+                if !sel.iter().any(|s| s == p) {
+                    continue;
+                }
+            }
             for f in session_store::list_session_files(p) {
                 files.push((p.clone(), f));
             }
@@ -305,6 +313,28 @@ impl SearchService {
         Ok(())
     }
 
+    pub fn get_scope(&self) -> Option<Vec<String>> {
+        self.index_scope.lock().unwrap().clone()
+    }
+
+    pub fn set_scope(
+        &self,
+        projects: Option<Vec<String>>,
+        app_data_dir: &Path,
+    ) -> Result<(), String> {
+        write_scope(app_data_dir, &projects);
+        *self.index_scope.lock().unwrap() = projects.clone();
+        // Drop any indexed sessions now outside the scope.
+        if let Some(scope) = &projects {
+            self.index
+                .read()
+                .unwrap()
+                .retain_projects(scope)
+                .map_err(|e| e.to_string())?;
+        }
+        Ok(())
+    }
+
     pub fn config(&self) -> BackendConfig {
         self.config.lock().unwrap().clone()
     }
@@ -354,6 +384,19 @@ fn read_enabled(dir: &Path) -> bool {
 
 fn write_enabled(dir: &Path, enabled: bool) {
     let _ = std::fs::write(enabled_path(dir), if enabled { "1" } else { "0" });
+}
+
+fn read_scope(dir: &Path) -> Option<Vec<String>> {
+    std::fs::read_to_string(dir.join("search-scope.json"))
+        .ok()
+        .and_then(|s| serde_json::from_str::<Option<Vec<String>>>(&s).ok())
+        .flatten()
+}
+
+fn write_scope(dir: &Path, scope: &Option<Vec<String>>) {
+    if let Ok(s) = serde_json::to_string(scope) {
+        let _ = std::fs::write(dir.join("search-scope.json"), s);
+    }
 }
 
 fn dir_size(path: &Path) -> u64 {
