@@ -4813,7 +4813,6 @@ dependencies = [
  "tauri-plugin-updater",
  "tiny_http",
  "tokio",
- "zerocopy",
 ]
 
 [[package]]
