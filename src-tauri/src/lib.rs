@@ -1,4 +1,5 @@
 mod commands;
+mod search;
 mod hooks;
 mod markdown_export;
 mod session_monitor;
