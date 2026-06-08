@@ -163,6 +163,39 @@ impl SearchIndex {
         Ok(n as usize)
     }
 
+    pub fn distinct_session_count(&self) -> rusqlite::Result<usize> {
+        let conn = self.conn.lock().unwrap();
+        let n: i64 = conn.query_row("SELECT COUNT(DISTINCT session_id) FROM chunks", [], |r| r.get(0))?;
+        Ok(n as usize)
+    }
+
+    pub fn set_meta(&self, key: &str, value: &str) -> rusqlite::Result<()> {
+        let conn = self.conn.lock().unwrap();
+        conn.execute(
+            "INSERT INTO meta(key, value) VALUES(?1, ?2) ON CONFLICT(key) DO UPDATE SET value = excluded.value",
+            [key, value],
+        )?;
+        Ok(())
+    }
+
+    pub fn get_meta(&self, key: &str) -> rusqlite::Result<Option<String>> {
+        let conn = self.conn.lock().unwrap();
+        conn.query_row("SELECT value FROM meta WHERE key = ?1", [key], |r| r.get::<_, String>(0)).optional()
+    }
+
+    /// Wipe everything (used when the embedding model/dimension changes).
+    pub fn clear_all(&self) -> rusqlite::Result<()> {
+        let conn = self.conn.lock().unwrap();
+        // Delete content rows first, then rebuild the FTS index from the now-empty
+        // content table. The 'delete-all' command is not available in all SQLite
+        // builds; 'rebuild' is universal and safe to call on an empty source table.
+        conn.execute_batch(
+            "DELETE FROM chunks; INSERT INTO chunks_fts(chunks_fts) VALUES('rebuild');
+             DELETE FROM vec_chunks; DELETE FROM session_hash;",
+        )?;
+        Ok(())
+    }
+
     pub fn query(
         &self,
         query_text: &str,
@@ -285,6 +318,25 @@ mod tests {
         let text = "İé redirect here";
         let s = make_snippet(text, "redirect");
         assert!(s.to_lowercase().contains("redirect"));
+    }
+
+    #[test]
+    fn clear_all_empties_the_index() {
+        let idx = SearchIndex::open_in_memory(3).unwrap();
+        let rows = vec![ChunkRow {
+            session_id: "s1".into(), project_encoded: "p".into(), project: "proj".into(),
+            session_title: "t".into(), message_uuid: "m1".into(), role: "user".into(),
+            start_time: Some(1), text: "hello redirect".into(), embedding: vec![0.1,0.2,0.3],
+        }];
+        idx.replace_session("s1", &rows).unwrap();
+        idx.set_meta("model", "e5").unwrap();
+        assert_eq!(idx.get_meta("model").unwrap(), Some("e5".to_string()));
+        idx.clear_all().unwrap();
+        assert_eq!(idx.chunk_count().unwrap(), 0);
+        assert_eq!(idx.distinct_session_count().unwrap(), 0);
+        // a query after clear should not error and should be empty
+        let hits = idx.query("redirect", &[0.1_f32,0.2,0.3], &Default::default(), 10).unwrap();
+        assert!(hits.is_empty());
     }
 
     #[test]
