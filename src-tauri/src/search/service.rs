@@ -234,16 +234,12 @@ impl SearchService {
     }
 
     /// Enable semantic search and persist the setting.
-    // wired by commands in next task
-    #[allow(dead_code)]
     pub fn enable(&self, app_data_dir: &Path) {
         self.enabled.store(true, Ordering::Relaxed);
         write_enabled(app_data_dir, true);
     }
 
     /// Signal any in-progress build to stop at the next session boundary.
-    // wired by commands in next task
-    #[allow(dead_code)]
     pub fn cancel_build(&self) {
         self.cancel.store(true, Ordering::Relaxed);
     }
@@ -268,8 +264,6 @@ impl SearchService {
     }
 
     /// Cancel any in-flight build, disable search, reset the embedder, and delete model files.
-    // wired by commands in next task
-    #[allow(dead_code)]
     pub fn delete_model(&self, app_data_dir: &Path) -> Result<(), String> {
         self.cancel_build();
         self.enabled.store(false, Ordering::Relaxed);

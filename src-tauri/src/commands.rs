@@ -20,7 +20,10 @@ pub async fn get_session(session_id: String, project_encoded: String) -> Option<
 
 #[tauri::command]
 pub fn get_version(app: tauri::AppHandle) -> String {
-    app.config().version.clone().unwrap_or_else(|| "unknown".to_string())
+    app.config()
+        .version
+        .clone()
+        .unwrap_or_else(|| "unknown".to_string())
 }
 
 #[tauri::command]
@@ -41,7 +44,8 @@ pub async fn export_session_markdown(
         let session = session_store::get_session(&session_id, &project_encoded)
             .ok_or_else(|| "Session not found".to_string())?;
         let markdown = crate::markdown_export::session_to_markdown(&session);
-        std::fs::write(&dest_path, markdown).map_err(|e| format!("Failed to write {dest_path}: {e}"))
+        std::fs::write(&dest_path, markdown)
+            .map_err(|e| format!("Failed to write {dest_path}: {e}"))
     })
     .await
     .map_err(|e| e.to_string())?
@@ -80,7 +84,9 @@ pub async fn search_query(
     filters: Option<SearchFilters>,
     limit: Option<usize>,
 ) -> Result<Vec<SearchHit>, String> {
-    let Some(svc) = state.search.clone() else { return Ok(Vec::new()) };
+    let Some(svc) = state.search.clone() else {
+        return Ok(Vec::new());
+    };
     let filters = filters.unwrap_or_default();
     let limit = limit.unwrap_or(40);
     tokio::task::spawn_blocking(move || svc.query(&query, &filters, limit))
@@ -92,13 +98,24 @@ pub async fn search_query(
 pub fn search_index_status(state: State<'_, AppState>) -> IndexStatus {
     match &state.search {
         Some(s) => s.status(),
-        None => IndexStatus { indexed: 0, total: 0, building: false, last_built: None, model: "unavailable".into(), enabled: false, model_present: false, model_size_bytes: 0 },
+        None => IndexStatus {
+            indexed: 0,
+            total: 0,
+            building: false,
+            last_built: None,
+            model: "unavailable".into(),
+            enabled: false,
+            model_present: false,
+            model_size_bytes: 0,
+        },
     }
 }
 
 #[tauri::command]
 pub async fn search_reindex(state: State<'_, AppState>) -> Result<(), String> {
-    let Some(svc) = state.search.clone() else { return Err("search unavailable".into()) };
+    let Some(svc) = state.search.clone() else {
+        return Err("search unavailable".into());
+    };
     tokio::task::spawn_blocking(move || svc.build())
         .await
         .map_err(|e| e.to_string())?
@@ -108,7 +125,11 @@ pub async fn search_reindex(state: State<'_, AppState>) -> Result<(), String> {
 pub fn search_get_backend(state: State<'_, AppState>) -> BackendConfig {
     match &state.search {
         Some(s) => s.config(),
-        None => BackendConfig { provider: "local".into(), model: "multilingual-e5-small".into(), api_key: None },
+        None => BackendConfig {
+            provider: "local".into(),
+            model: "multilingual-e5-small".into(),
+            api_key: None,
+        },
     }
 }
 
@@ -118,16 +139,60 @@ pub async fn search_set_backend(
     state: State<'_, AppState>,
     config: BackendConfig,
 ) -> Result<(), String> {
-    let Some(svc) = state.search.clone() else { return Err("search unavailable".into()) };
+    let Some(svc) = state.search.clone() else {
+        return Err("search unavailable".into());
+    };
     let svc_for_build = svc.clone();
     let dir = app.path().app_data_dir().map_err(|e| e.to_string())?;
     let res = tokio::task::spawn_blocking(move || svc.set_backend(config, &dir))
         .await
         .map_err(|e| e.to_string())?;
     if res.is_ok() {
-        std::thread::spawn(move || { let _ = svc_for_build.build(); });
+        std::thread::spawn(move || {
+            let _ = svc_for_build.build();
+        });
     }
     res
+}
+
+#[tauri::command]
+pub async fn search_enable(
+    app: tauri::AppHandle,
+    state: State<'_, AppState>,
+) -> Result<(), String> {
+    let Some(svc) = state.search.clone() else {
+        return Err("search unavailable".into());
+    };
+    let dir = app.path().app_data_dir().map_err(|e| e.to_string())?;
+    svc.enable(&dir);
+    let svc_build = svc.clone();
+    std::thread::spawn(move || {
+        let _ = svc_build.build();
+    });
+    Ok(())
+}
+
+#[tauri::command]
+pub fn search_cancel_build(state: State<'_, AppState>) -> Result<(), String> {
+    let Some(svc) = &state.search else {
+        return Err("search unavailable".into());
+    };
+    svc.cancel_build();
+    Ok(())
+}
+
+#[tauri::command]
+pub async fn search_delete_model(
+    app: tauri::AppHandle,
+    state: State<'_, AppState>,
+) -> Result<(), String> {
+    let Some(svc) = state.search.clone() else {
+        return Err("search unavailable".into());
+    };
+    let dir = app.path().app_data_dir().map_err(|e| e.to_string())?;
+    tokio::task::spawn_blocking(move || svc.delete_model(&dir))
+        .await
+        .map_err(|e| e.to_string())?
 }
 
 #[tauri::command]
@@ -155,4 +220,3 @@ pub fn send_native_notification(title: String, body: String) -> Result<(), Strin
 
     Ok(())
 }
-

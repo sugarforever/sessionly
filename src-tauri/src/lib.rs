@@ -1,7 +1,7 @@
 mod commands;
-mod search;
 mod hooks;
 mod markdown_export;
+mod search;
 mod session_monitor;
 mod session_store;
 mod session_types;
@@ -37,7 +37,9 @@ pub fn run() {
                     let svc = Arc::new(svc);
                     monitor.set_search(svc.clone());
                     let svc_build = svc.clone();
-                    std::thread::spawn(move || { let _ = svc_build.build(); });
+                    std::thread::spawn(move || {
+                        let _ = svc_build.build();
+                    });
                     Some(svc)
                 }
                 Err(e) => {
@@ -96,6 +98,9 @@ pub fn run() {
             commands::search_reindex,
             commands::search_get_backend,
             commands::search_set_backend,
+            commands::search_enable,
+            commands::search_cancel_build,
+            commands::search_delete_model,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

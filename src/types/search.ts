@@ -22,6 +22,9 @@ export interface IndexStatus {
   building: boolean
   lastBuilt: number | null
   model: string
+  enabled: boolean
+  modelPresent: boolean
+  modelSizeBytes: number
 }
 
 export interface BackendConfig {
