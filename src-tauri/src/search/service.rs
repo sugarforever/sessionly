@@ -148,6 +148,14 @@ impl SearchService {
             embedder.embed_documents(&texts)?
         };
 
+        if embeddings.len() != texts.len() {
+            return Err(format!(
+                "embedder returned {} embeddings for {} chunks",
+                embeddings.len(),
+                texts.len()
+            ));
+        }
+
         let rows: Vec<ChunkRow> = texts
             .into_iter()
             .zip(metas)
@@ -189,6 +197,9 @@ impl SearchService {
         let new_embedder = build_embedder(&cfg, api_key)?;
         let new_dim = new_embedder.dim();
         let old_dim = self.embedder.read().unwrap().dim();
+        // NOTE: a backend switch does not pause an in-flight background build();
+        // Task 12 re-triggers build() after switching, so the new index is fully
+        // repopulated. Source of truth is ~/.claude, so no data can be lost here.
         if new_dim != old_dim {
             let _ = std::fs::remove_file(&self.db_path);
             let new_index =
