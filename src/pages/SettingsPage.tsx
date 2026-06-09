@@ -5,29 +5,26 @@ import type { BackendConfig, IndexStatus } from '@/types/search'
 import { useNotificationContext } from '@/contexts/NotificationContext'
 
 /*
- * This panel adopts the Linear design system (Open Design binding in
- * .open-design.json). It is a self-contained dark surface — near-black
- * canvas, translucent white borders, indigo accent, Inter 510 — and is
- * intentionally distinct from the rest of the app's black & white theme.
+ * Styled with the app's shared design tokens (Linear-tuned in index.css),
+ * so this panel follows the light/dark theme like every other page.
  */
 
-// Linear tokens (kept local — this surface does not follow the app theme)
-const PAGE_BG = '#08090a'
-const TEXT = '#f7f8f8' // primary
-const TEXT_2 = '#d0d6e0' // secondary
-const MUTED = '#8a8f98' // tertiary
-const SUBTLE = '#62666d' // quaternary
-const VIOLET = '#7170ff'
+// Token-driven colors — resolve via CSS vars, so they follow light/dark.
+const TEXT = 'hsl(var(--foreground))'
+const TEXT_2 = 'hsl(var(--foreground) / 0.85)'
+const MUTED = 'hsl(var(--muted-foreground))'
+const SUBTLE = 'hsl(var(--muted-foreground) / 0.7)'
+const VIOLET = 'hsl(var(--primary))'
 
-const card = 'rounded-xl border border-white/[0.08] bg-white/[0.02] p-6'
+const card = 'rounded-xl border border-border bg-card p-6'
 const btn =
-  'rounded-md border border-white/[0.08] bg-white/[0.03] px-3 py-1.5 text-[13px] text-[#e2e4e7] transition-colors hover:bg-white/[0.07] disabled:opacity-40 disabled:cursor-not-allowed'
+  'rounded-md border border-border bg-transparent px-3 py-1.5 text-[13px] text-foreground transition-colors hover:bg-accent disabled:opacity-40 disabled:cursor-not-allowed'
 const btnPrimary =
-  'rounded-md bg-[#5e6ad2] px-3.5 py-1.5 text-[13px] text-white transition-colors hover:bg-[#828fff] disabled:opacity-40'
+  'rounded-md bg-primary px-3.5 py-1.5 text-[13px] text-primary-foreground transition-colors hover:bg-primary/90 disabled:opacity-40'
 
 function Overline({ children }: { children: React.ReactNode }) {
   return (
-    <div className="text-[11px] font-medium uppercase tracking-[0.08em] text-[#62666d]">
+    <div className="text-[11px] font-medium uppercase tracking-[0.08em] text-muted-foreground">
       {children}
     </div>
   )
@@ -50,10 +47,10 @@ function Toggle({
       disabled={disabled}
       className={`relative inline-flex h-5 w-9 shrink-0 items-center rounded-full transition-colors ${
         disabled ? 'cursor-not-allowed opacity-40' : ''
-      } ${checked ? 'bg-[#5e6ad2]' : 'bg-white/[0.14]'}`}
+      } ${checked ? 'bg-primary' : 'bg-muted-foreground/30'}`}
     >
       <span
-        className={`inline-block h-3.5 w-3.5 rounded-full bg-[#f7f8f8] transition-transform ${
+        className={`inline-block h-3.5 w-3.5 rounded-full bg-background transition-transform ${
           checked ? 'translate-x-[18px]' : 'translate-x-[3px]'
         }`}
       />
@@ -215,8 +212,8 @@ export function SettingsPage() {
       onClick={() => saveBackend(provider)}
       className={`flex-1 rounded-md border px-3 py-2 text-left transition-colors ${
         backend.provider === provider
-          ? 'border-[#5e6ad2]/70 bg-[#5e6ad2]/[0.14]'
-          : 'border-white/[0.08] bg-white/[0.02] hover:bg-white/[0.05]'
+          ? 'border-primary/70 bg-primary/10'
+          : 'border-border bg-card hover:bg-accent'
       }`}
     >
       <div className="text-[13px]" style={{ color: backend.provider === provider ? TEXT : TEXT_2 }}>
@@ -229,10 +226,7 @@ export function SettingsPage() {
   )
 
   return (
-    <div
-      className="h-full overflow-y-auto scrollbar-thin"
-      style={{ backgroundColor: PAGE_BG, fontFeatureSettings: '"cv01", "ss03"' }}
-    >
+    <div className="h-full overflow-y-auto scrollbar-thin bg-background">
       <div className="mx-auto max-w-3xl space-y-6 px-8 py-10">
         {/* Header */}
         <div className="space-y-1.5">
@@ -325,7 +319,7 @@ export function SettingsPage() {
             </div>
           </div>
 
-          <div className="flex items-center gap-3 border-t border-white/[0.06] pt-4">
+          <div className="flex items-center gap-3 border-t border-border pt-4">
             <button onClick={handleTestNotification} className={btn}>
               Send test notification
             </button>
@@ -452,14 +446,12 @@ export function SettingsPage() {
               </div>
             )}
             {idxStatus?.error && (
-              <p className="text-[12px]" style={{ color: '#e5484d' }}>
-                Last indexing error: {idxStatus.error}
-              </p>
+              <p className="text-[12px] text-destructive">Last indexing error: {idxStatus.error}</p>
             )}
           </div>
 
           {/* Embedding backend */}
-          <div className="space-y-3 border-t border-white/[0.06] pt-5">
+          <div className="space-y-3 border-t border-border pt-5">
             <Overline>Embedding backend</Overline>
             <div className="flex gap-2">
               {backendPill('local', 'Local', 'multilingual-e5-small')}
@@ -483,18 +475,18 @@ export function SettingsPage() {
                       ? 'Enter a new key to replace the stored one…'
                       : 'OpenAI API key (stored only in your OS keychain)'
                   }
-                  className="w-full rounded-md border border-white/[0.08] bg-white/[0.02] px-3 py-2 text-[13px] outline-none placeholder:text-[#62666d] focus:border-[#5e6ad2]/60"
+                  className="w-full rounded-md border border-border bg-card px-3 py-2 text-[13px] outline-none placeholder:text-muted-foreground focus:border-primary/60"
                   style={{ color: TEXT }}
                 />
                 <div className="flex items-center gap-3 text-[12px]">
                   {keySaved ? (
-                    <span style={{ color: '#27a644' }}>✓ Saved to your OS keychain</span>
+                    <span className="text-emerald-500">✓ Saved to your OS keychain</span>
                   ) : backend.hasKey ? (
                     <>
-                      <span style={{ color: '#27a644' }}>✓ Key stored in your OS keychain</span>
+                      <span className="text-emerald-500">✓ Key stored in your OS keychain</span>
                       <button
                         onClick={deleteApiKey}
-                        className="transition-colors hover:text-[#f7f8f8]"
+                        className="transition-colors hover:text-foreground"
                         style={{ color: MUTED }}
                       >
                         Delete key
@@ -512,7 +504,7 @@ export function SettingsPage() {
 
           {/* Project scope */}
           {projects.length > 0 && (
-            <div className="space-y-3 border-t border-white/[0.06] pt-5">
+            <div className="space-y-3 border-t border-border pt-5">
               <div className="flex items-center justify-between">
                 <Overline>Projects to index</Overline>
                 <button
@@ -521,26 +513,26 @@ export function SettingsPage() {
                     await api.searchSetScope(null)
                     refreshIdxStatus()
                   }}
-                  className="text-[12px] transition-colors hover:text-[#f7f8f8]"
+                  className="text-[12px] transition-colors hover:text-foreground"
                   style={{ color: MUTED }}
                 >
                   Select all
                 </button>
               </div>
-              <div className="max-h-44 space-y-0.5 overflow-y-auto rounded-md border border-white/[0.08] bg-white/[0.02] p-2 scrollbar-thin">
+              <div className="max-h-44 space-y-0.5 overflow-y-auto rounded-md border border-border bg-card p-2 scrollbar-thin">
                 {projects.map((p) => {
                   const included = scope === null || scope.includes(p.projectEncoded)
                   return (
                     <label
                       key={p.projectEncoded}
-                      className="flex cursor-pointer items-center gap-2.5 rounded px-1.5 py-1 text-[13px] hover:bg-white/[0.04]"
+                      className="flex cursor-pointer items-center gap-2.5 rounded px-1.5 py-1 text-[13px] hover:bg-accent"
                       style={{ color: included ? TEXT_2 : SUBTLE }}
                     >
                       <input
                         type="checkbox"
                         checked={included}
                         onChange={() => toggleProject(p.projectEncoded)}
-                        className="accent-[#7170ff]"
+                        className="accent-primary"
                       />
                       <span className="truncate">{p.project}</span>
                     </label>
