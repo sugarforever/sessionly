@@ -4,50 +4,57 @@
 @tailwind components;
 @tailwind utilities;
 
+/*
+ * Design tokens tuned to the Linear design system (Open Design binding,
+ * .open-design.json): cool near-black canvas, translucent-feeling surfaces,
+ * a single indigo accent, Inter with cv01/ss03. Dark is the native medium;
+ * light is a Linear-flavoured neutral. All panels inherit this via the
+ * Tailwind token classes (bg-background, text-foreground, border-border, …).
+ */
 @layer base {
   :root {
-    --background: 0 0% 100%;
-    --foreground: 0 0% 10%;
-    --card: 0 0% 98%;
-    --card-foreground: 0 0% 10%;
+    --background: 210 17% 98%; /* #f7f8f8 */
+    --foreground: 220 13% 6%;
+    --card: 0 0% 100%;
+    --card-foreground: 220 13% 6%;
     --popover: 0 0% 100%;
-    --popover-foreground: 0 0% 10%;
-    --primary: 0 0% 10%;
-    --primary-foreground: 0 0% 98%;
-    --secondary: 0 0% 95%;
-    --secondary-foreground: 0 0% 10%;
-    --muted: 0 0% 95%;
-    --muted-foreground: 0 0% 45%;
-    --accent: 0 0% 92%;
-    --accent-foreground: 0 0% 10%;
-    --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 0 0% 98%;
-    --border: 0 0% 90%;
-    --input: 0 0% 90%;
-    --ring: 0 0% 20%;
+    --popover-foreground: 220 13% 6%;
+    --primary: 234 56% 60%; /* Linear indigo #5e6ad2 */
+    --primary-foreground: 0 0% 100%;
+    --secondary: 220 14% 96%;
+    --secondary-foreground: 220 13% 12%;
+    --muted: 220 14% 96%;
+    --muted-foreground: 218 8% 45%;
+    --accent: 220 14% 94%;
+    --accent-foreground: 220 13% 12%;
+    --destructive: 0 72% 51%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 220 13% 90%;
+    --input: 220 13% 90%;
+    --ring: 234 56% 60%;
     --radius: 0.5rem;
   }
 
   .dark {
-    --background: 0 0% 4%;
-    --foreground: 0 0% 90%;
-    --card: 0 0% 6%;
-    --card-foreground: 0 0% 90%;
-    --popover: 0 0% 6%;
-    --popover-foreground: 0 0% 90%;
-    --primary: 0 0% 90%;
-    --primary-foreground: 0 0% 4%;
-    --secondary: 0 0% 10%;
-    --secondary-foreground: 0 0% 80%;
-    --muted: 0 0% 10%;
-    --muted-foreground: 0 0% 50%;
-    --accent: 0 0% 12%;
-    --accent-foreground: 0 0% 90%;
-    --destructive: 0 62.8% 30.6%;
-    --destructive-foreground: 0 0% 95%;
-    --border: 0 0% 14%;
-    --input: 0 0% 14%;
-    --ring: 0 0% 70%;
+    --background: 220 13% 4%; /* #08090a — cool near-black canvas */
+    --foreground: 210 14% 97%; /* #f7f8f8 — never pure white */
+    --card: 220 8% 6%; /* #0f1011 — panel */
+    --card-foreground: 210 14% 97%;
+    --popover: 220 6% 10%; /* #191a1b — elevated */
+    --popover-foreground: 210 14% 97%;
+    --primary: 234 56% 60%; /* Linear indigo #5e6ad2 */
+    --primary-foreground: 0 0% 100%;
+    --secondary: 225 7% 14%;
+    --secondary-foreground: 218 18% 85%; /* #d0d6e0 */
+    --muted: 220 6% 12%;
+    --muted-foreground: 218 7% 57%; /* #8a8f98 */
+    --accent: 225 7% 15%;
+    --accent-foreground: 210 14% 97%;
+    --destructive: 359 70% 59%;
+    --destructive-foreground: 0 0% 98%;
+    --border: 223 9% 15%; /* #23252a — semi-transparent-feeling */
+    --input: 223 9% 15%;
+    --ring: 234 56% 60%;
   }
 }
 
@@ -58,6 +65,8 @@
   body {
     @apply bg-background text-foreground;
     font-feature-settings:
+      'cv01' 1,
+      'ss03' 1,
       'rlig' 1,
       'calt' 1;
     font-synthesis: none;
@@ -82,10 +91,10 @@
   background: hsl(0 0% 70%);
 }
 .dark ::-webkit-scrollbar-thumb {
-  background: hsl(0 0% 20%);
+  background: hsl(220 6% 22%);
 }
 .dark ::-webkit-scrollbar-thumb:hover {
-  background: hsl(0 0% 30%);
+  background: hsl(220 6% 30%);
 }
 
 .scrollbar-thin::-webkit-scrollbar {

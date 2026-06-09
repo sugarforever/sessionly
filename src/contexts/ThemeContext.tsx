@@ -22,7 +22,8 @@ function getStoredTheme(): Theme {
       return stored
     }
   }
-  return 'system'
+  // Default to dark — the Linear-tuned theme is dark-native.
+  return 'dark'
 }
 
 export function ThemeProvider({ children }: { children: ReactNode }) {
