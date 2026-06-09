@@ -23,6 +23,7 @@ pub struct SearchService {
     total: AtomicUsize,
     enabled: AtomicBool,
     cancel: AtomicBool,
+    rerun: AtomicBool,
     index_scope: Mutex<Option<Vec<String>>>,
     last_error: Mutex<Option<String>>,
 }
@@ -57,6 +58,7 @@ impl SearchService {
             total: AtomicUsize::new(0),
             enabled: AtomicBool::new(enabled),
             cancel: AtomicBool::new(false),
+            rerun: AtomicBool::new(false),
             index_scope: Mutex::new(read_scope(&app_data_dir)),
             last_error: Mutex::new(None),
         })
@@ -119,23 +121,42 @@ impl SearchService {
         if !self.enabled.load(Ordering::Relaxed) {
             return Ok(());
         }
+        // Record that a (re)build with the latest config is wanted.
+        self.rerun.store(true, Ordering::SeqCst);
+        // If a build is already running, ask it to cancel + restart, then let it
+        // pick up the rerun. The latest config always wins.
         if self.building.swap(true, Ordering::SeqCst) {
+            self.cancel.store(true, Ordering::SeqCst);
             return Ok(());
         }
-        *self.last_error.lock().unwrap() = None;
-        let result = self.build_inner();
-        if let Err(e) = &result {
-            *self.last_error.lock().unwrap() = Some(e.clone());
-        }
-        self.building.store(false, Ordering::SeqCst);
+        let last = loop {
+            self.rerun.store(false, Ordering::SeqCst);
+            self.cancel.store(false, Ordering::SeqCst);
+            *self.last_error.lock().unwrap() = None;
+            let result = self.build_inner();
+            if let Err(e) = &result {
+                *self.last_error.lock().unwrap() = Some(e.clone());
+            }
+            let now = chrono::Utc::now().timestamp();
+            let _ = self
+                .index
+                .read()
+                .unwrap()
+                .set_meta("last_built", &now.to_string());
+
+            // Release ownership, then re-check whether a rerun was requested during
+            // this pass (avoids a lost-wakeup race).
+            self.building.store(false, Ordering::SeqCst);
+            if !self.rerun.load(Ordering::SeqCst) {
+                break result;
+            }
+            if self.building.swap(true, Ordering::SeqCst) {
+                // Another caller re-acquired the build; it will handle the rerun.
+                break result;
+            }
+        };
         self.cancel.store(false, Ordering::SeqCst);
-        let now = chrono::Utc::now().timestamp();
-        let _ = self
-            .index
-            .read()
-            .unwrap()
-            .set_meta("last_built", &now.to_string());
-        result
+        last
     }
 
     fn build_inner(&self) -> Result<(), String> {
