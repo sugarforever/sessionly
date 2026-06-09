@@ -38,6 +38,10 @@ export function SearchPage() {
               search(e.target.value)
             }}
             placeholder="Find a message, file path, or command across your sessions…"
+            autoComplete="off"
+            autoCorrect="off"
+            autoCapitalize="off"
+            spellCheck={false}
             className="h-12 w-full bg-transparent text-base outline-none placeholder:text-muted-foreground"
           />
           {loading && <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />}
