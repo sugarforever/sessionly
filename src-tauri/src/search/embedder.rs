@@ -62,7 +62,10 @@ impl OpenAiEmbedder {
     }
 
     fn call(&self, inputs: Vec<String>) -> Result<Vec<Vec<f32>>, String> {
-        let client = reqwest::blocking::Client::new();
+        let client = reqwest::blocking::Client::builder()
+            .timeout(std::time::Duration::from_secs(60))
+            .build()
+            .map_err(|e| e.to_string())?;
         let resp = client
             .post("https://api.openai.com/v1/embeddings")
             .bearer_auth(&self.api_key)
@@ -99,7 +102,11 @@ impl Embedder for OpenAiEmbedder {
         if texts.is_empty() {
             return Ok(vec![]);
         }
-        self.call(texts.to_vec())
+        let mut out = Vec::with_capacity(texts.len());
+        for batch in texts.chunks(128) {
+            out.extend(self.call(batch.to_vec())?);
+        }
+        Ok(out)
     }
     fn embed_query(&self, text: &str) -> Result<Vec<f32>, String> {
         Ok(self.call(vec![text.to_string()])?.pop().unwrap_or_default())

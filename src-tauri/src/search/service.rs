@@ -24,6 +24,7 @@ pub struct SearchService {
     enabled: AtomicBool,
     cancel: AtomicBool,
     index_scope: Mutex<Option<Vec<String>>>,
+    last_error: Mutex<Option<String>>,
 }
 
 fn expected_dim(cfg: &BackendConfig) -> usize {
@@ -57,6 +58,7 @@ impl SearchService {
             enabled: AtomicBool::new(enabled),
             cancel: AtomicBool::new(false),
             index_scope: Mutex::new(read_scope(&app_data_dir)),
+            last_error: Mutex::new(None),
         })
     }
 
@@ -91,6 +93,7 @@ impl SearchService {
             enabled: self.is_enabled(),
             model_present: self.model_present(),
             model_size_bytes: self.model_size_bytes(),
+            error: self.last_error.lock().unwrap().clone(),
         }
     }
 
@@ -119,6 +122,7 @@ impl SearchService {
         if self.building.swap(true, Ordering::SeqCst) {
             return Ok(());
         }
+        *self.last_error.lock().unwrap() = None;
         let result = self.build_inner();
         self.building.store(false, Ordering::SeqCst);
         self.cancel.store(false, Ordering::SeqCst);
@@ -180,7 +184,9 @@ impl SearchService {
                     }
                     let (project_encoded, file) = &files_ref[i];
                     if let Some(session_id) = file.file_stem().and_then(|s| s.to_str()) {
-                        let _ = this.index_one(project_encoded, session_id, file);
+                        if let Err(e) = this.index_one(project_encoded, session_id, file) {
+                            *this.last_error.lock().unwrap() = Some(e);
+                        }
                     }
                     this.indexed.fetch_add(1, Ordering::Relaxed);
                 });

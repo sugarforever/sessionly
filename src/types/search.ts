@@ -25,6 +25,7 @@ export interface IndexStatus {
   enabled: boolean
   modelPresent: boolean
   modelSizeBytes: number
+  error: string | null
 }
 
 export interface BackendConfig {

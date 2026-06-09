@@ -107,6 +107,7 @@ pub fn search_index_status(state: State<'_, AppState>) -> IndexStatus {
             enabled: false,
             model_present: false,
             model_size_bytes: 0,
+            error: None,
         },
     }
 }

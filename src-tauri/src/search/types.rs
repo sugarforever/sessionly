@@ -43,6 +43,7 @@ pub struct IndexStatus {
     pub enabled: bool,
     pub model_present: bool,
     pub model_size_bytes: u64,
+    pub error: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
