@@ -1,0 +1,11 @@
+{
+  "version": 1,
+  "skills": {
+    "open-design": {
+      "source": "sugarforever/open-design-skill",
+      "sourceType": "github",
+      "skillPath": "SKILL.md",
+      "computedHash": "5a736383765ca335454f89c4baf256996afe85bd9459828bc29f05905172b039"
+    }
+  }
+}
