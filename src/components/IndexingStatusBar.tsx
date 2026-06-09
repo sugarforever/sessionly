@@ -1,33 +1,14 @@
-import { useEffect, useState } from 'react'
 import { Loader2 } from 'lucide-react'
-import { api } from '@/types/api'
-import type { IndexStatus } from '@/types/search'
+import { useIndexStatus } from '@/features/search/SearchProvider'
 
 /**
  * A thin, app-wide strip that appears at the top of the content area only while
  * the search index is building, then auto-hides. Visible on every panel so the
- * background indexing job is never silent. Polls the same status command the
- * Search/Settings surfaces use.
+ * background indexing job is never silent. Reads from the single status poller
+ * in SearchProvider.
  */
 export function IndexingStatusBar() {
-  const [status, setStatus] = useState<IndexStatus | null>(null)
-
-  useEffect(() => {
-    let active = true
-    const tick = () =>
-      api
-        .searchIndexStatus()
-        .then((s) => {
-          if (active) setStatus(s)
-        })
-        .catch(() => {})
-    tick()
-    const id = window.setInterval(tick, 2000)
-    return () => {
-      active = false
-      window.clearInterval(id)
-    }
-  }, [])
+  const { status } = useIndexStatus()
 
   if (!status?.building || !status.enabled) return null
 

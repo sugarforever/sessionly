@@ -1,12 +1,14 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useRef, useState } from 'react'
 import { api } from '@/types/api'
-import type { SearchHit, SearchFilters, IndexStatus } from '@/types/search'
+import { useIndexStatus } from './SearchProvider'
+import type { SearchHit, SearchFilters } from '@/types/search'
 
 export function useSearch() {
   const [query, setQuery] = useState('')
   const [results, setResults] = useState<SearchHit[]>([])
   const [loading, setLoading] = useState(false)
-  const [status, setStatus] = useState<IndexStatus | null>(null)
+  // Index status comes from the single app-wide poller in SearchProvider.
+  const { status } = useIndexStatus()
   const timer = useRef<number | undefined>(undefined)
 
   const run = useCallback(async (q: string, filters?: SearchFilters) => {
@@ -34,19 +36,5 @@ export function useSearch() {
     [run]
   )
 
-  const refreshStatus = useCallback(async () => {
-    try {
-      setStatus(await api.searchIndexStatus())
-    } catch {
-      // noop
-    }
-  }, [])
-
-  useEffect(() => {
-    refreshStatus()
-    const id = window.setInterval(refreshStatus, 2000)
-    return () => window.clearInterval(id)
-  }, [refreshStatus])
-
-  return { query, results, loading, status, search, run, refreshStatus }
+  return { query, results, loading, status, search, run }
 }

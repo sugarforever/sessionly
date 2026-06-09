@@ -1,7 +1,9 @@
 import { useEffect, useState } from 'react'
 import { Search as SearchIcon, Loader2 } from 'lucide-react'
 import { useSearch } from './useSearch'
+import { useIndexStatus } from './SearchProvider'
 import { SearchResultList } from './SearchResultList'
+import { IndexStatusLine } from './IndexStatusLine'
 import { useNavigation } from '@/contexts/NavigationContext'
 import { useAppDispatch } from '@/store/hooks'
 import { selectSession } from '@/store/slices/sessionsSlice'
@@ -19,6 +21,7 @@ const ALL_PROJECTS = '__all__'
 
 export function SearchPage() {
   const { query, results, loading, status, search } = useSearch()
+  const { refreshStatus } = useIndexStatus()
   const [input, setInput] = useState('')
   const [projects, setProjects] = useState<{ project: string; projectEncoded: string }[]>([])
   const [project, setProject] = useState<string>(ALL_PROJECTS)
@@ -30,19 +33,28 @@ export function SearchPage() {
   // on cloud backends). It is hash-skipped and single-flighted, so it is cheap
   // when nothing changed. Also load the project list for the filter.
   useEffect(() => {
+    let active = true
     api
       .searchGetTriggers()
       .then((t) => {
-        if (t.onSearchOpen) return api.searchReindex()
+        if (t.onSearchOpen) {
+          return api.searchReindex().then(() => {
+            if (active) refreshStatus()
+          })
+        }
       })
       .catch(() => {})
     api
       .sessionsGetAll()
-      .then((groups) =>
-        setProjects(groups.map((g) => ({ project: g.project, projectEncoded: g.projectEncoded })))
-      )
+      .then((groups) => {
+        if (active)
+          setProjects(groups.map((g) => ({ project: g.project, projectEncoded: g.projectEncoded })))
+      })
       .catch(() => {})
-  }, [])
+    return () => {
+      active = false
+    }
+  }, [refreshStatus])
 
   const filters = project === ALL_PROJECTS ? undefined : { projectEncoded: project }
 
@@ -102,11 +114,7 @@ export function SearchPage() {
             </Select>
           </div>
         )}
-        {status?.building && status.enabled && (
-          <p className="text-xs text-muted-foreground">
-            Indexing with {status.model}… {status.indexed}/{status.total}
-          </p>
-        )}
+        <IndexStatusLine status={status} />
         {status && !status.enabled ? (
           <p className="text-sm text-muted-foreground">Search is off — enable it in Settings.</p>
         ) : (

@@ -1,7 +1,8 @@
 import { useEffect, useState, useCallback, useRef } from 'react'
 import { api } from '@/types/api'
 import type { HookStatus } from '@/types/session-types'
-import type { BackendConfig, IndexStatus, IndexTriggers } from '@/types/search'
+import type { BackendConfig, IndexTriggers } from '@/types/search'
+import { useIndexStatus } from '@/features/search/SearchProvider'
 import { useNotificationContext } from '@/contexts/NotificationContext'
 
 /*
@@ -79,17 +80,10 @@ export function SettingsPage() {
   const [keySaved, setKeySaved] = useState(false)
   const [confirmingDelete, setConfirmingDelete] = useState(false)
   const keySavedTimer = useRef<ReturnType<typeof setTimeout>>(undefined)
-  const [idxStatus, setIdxStatus] = useState<IndexStatus | null>(null)
+  // Index status comes from the single app-wide poller in SearchProvider;
+  // refreshIdxStatus() forces an immediate refetch after a mutating action.
+  const { status: idxStatus, refreshStatus: refreshIdxStatus } = useIndexStatus()
   const [triggers, setTriggers] = useState<IndexTriggers | null>(null)
-
-  const refreshIdxStatus = useCallback(
-    () =>
-      api
-        .searchIndexStatus()
-        .then(setIdxStatus)
-        .catch(() => {}),
-    []
-  )
 
   const reloadBackend = useCallback(
     () =>
@@ -102,20 +96,22 @@ export function SettingsPage() {
 
   useEffect(() => {
     reloadBackend()
-    refreshIdxStatus()
     api
       .searchGetTriggers()
       .then(setTriggers)
       .catch(() => {})
-    const id = window.setInterval(refreshIdxStatus, 2000)
-    return () => window.clearInterval(id)
-  }, [refreshIdxStatus, reloadBackend])
+  }, [reloadBackend])
 
   const updateTriggers = async (patch: Partial<IndexTriggers>) => {
     if (!triggers) return
+    const prev = triggers
     const next = { ...triggers, ...patch }
     setTriggers(next)
-    await api.searchSetTriggers(next)
+    try {
+      await api.searchSetTriggers(next)
+    } catch {
+      setTriggers(prev) // roll back the optimistic toggle on failure
+    }
   }
 
   const saveApiKey = async () => {

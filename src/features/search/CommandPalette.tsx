@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom'
 import { Loader2, Search } from 'lucide-react'
 import { useSearch } from './useSearch'
 import { SearchResultList } from './SearchResultList'
+import { IndexStatusLine } from './IndexStatusLine'
 import { useNavigation } from '@/contexts/NavigationContext'
 import { useAppDispatch } from '@/store/hooks'
 import { selectSession } from '@/store/slices/sessionsSlice'
@@ -80,11 +81,7 @@ export function CommandPalette({ open, onClose }: { open: boolean; onClose: () =
           {loading && <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />}
         </div>
         <div className="max-h-[50vh] overflow-y-auto p-1.5 scrollbar-thin">
-          {status?.building && status.enabled && (
-            <div className="px-3 py-2 text-xs text-muted-foreground">
-              Indexing with {status.model}… {status.indexed}/{status.total}
-            </div>
-          )}
+          <IndexStatusLine status={status} className="px-3 py-2" />
           {status && !status.enabled ? (
             <div className="px-3 py-6 text-center text-sm text-muted-foreground">
               Search is off — enable it in Settings.
