@@ -104,7 +104,6 @@ pub fn run() {
             commands::search_delete_api_key,
             commands::search_enable,
             commands::search_cancel_build,
-            commands::search_delete_model,
             commands::search_get_triggers,
             commands::search_set_triggers,
         ])

@@ -41,8 +41,6 @@ pub struct IndexStatus {
     pub last_built: Option<i64>,
     pub model: String,
     pub enabled: bool,
-    pub model_present: bool,
-    pub model_size_bytes: u64,
     pub error: Option<String>,
 }
 

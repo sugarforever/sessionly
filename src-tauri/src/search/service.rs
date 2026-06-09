@@ -16,8 +16,6 @@ pub struct SearchService {
     index: RwLock<Arc<SearchIndex>>,
     embedder: RwLock<Option<Arc<dyn Embedder>>>,
     config: Mutex<BackendConfig>,
-    db_path: PathBuf,
-    models_dir: PathBuf,
     building: AtomicBool,
     indexed: AtomicUsize,
     total: AtomicUsize,
@@ -28,31 +26,44 @@ pub struct SearchService {
     last_error: Mutex<Option<String>>,
 }
 
-fn expected_dim(cfg: &BackendConfig) -> usize {
-    if cfg.provider == "openai" { 1536 } else { 384 }
-}
+// OpenAI text-embedding-3-small is the only backend; its vectors are 1536-dim.
+const EMBED_DIM: usize = 1536;
 
 impl SearchService {
     pub fn new(app_data_dir: PathBuf) -> Result<Self, String> {
         std::fs::create_dir_all(&app_data_dir).map_err(|e| e.to_string())?;
         let db_path = app_data_dir.join("search-index.sqlite");
-        let models_dir = app_data_dir.join("models");
-        let config = load_config(&app_data_dir);
-        let enabled = read_enabled(&app_data_dir);
-        let dim = expected_dim(&config);
-        let index = match SearchIndex::open(&db_path, dim) {
+
+        // The on-device local model was removed. Reclaim any previously
+        // downloaded model files (can be hundreds of MB).
+        let _ = std::fs::remove_dir_all(app_data_dir.join("models"));
+
+        let mut config = load_config(&app_data_dir);
+        let mut enabled = read_enabled(&app_data_dir);
+
+        // Migrate any saved local-backend config to OpenAI. The old local index
+        // held 384-dim vectors, so wipe it, and turn search off until the user
+        // supplies an OpenAI key (local search used to work without one).
+        if config.provider != "openai" {
+            config.provider = "openai".into();
+            config.model = "text-embedding-3-small".into();
+            save_config(&app_data_dir, &config);
+            let _ = std::fs::remove_file(&db_path);
+            enabled = false;
+            write_enabled(&app_data_dir, false);
+        }
+
+        let index = match SearchIndex::open(&db_path, EMBED_DIM) {
             Ok(idx) => idx,
             Err(_) => {
                 let _ = std::fs::remove_file(&db_path);
-                SearchIndex::open(&db_path, dim).map_err(|e| e.to_string())?
+                SearchIndex::open(&db_path, EMBED_DIM).map_err(|e| e.to_string())?
             }
         };
         Ok(Self {
             index: RwLock::new(Arc::new(index)),
             embedder: RwLock::new(None),
             config: Mutex::new(config),
-            db_path,
-            models_dir,
             building: AtomicBool::new(false),
             indexed: AtomicUsize::new(0),
             total: AtomicUsize::new(0),
@@ -70,8 +81,7 @@ impl SearchService {
         }
         let cfg = self.config.lock().unwrap().clone();
         let key = read_key(&cfg);
-        let e: Arc<dyn Embedder> =
-            Arc::from(build_embedder(&cfg, key, self.models_dir.clone())?);
+        let e: Arc<dyn Embedder> = Arc::from(build_embedder(&cfg, key)?);
         *self.embedder.write().unwrap() = Some(e.clone());
         Ok(e)
     }
@@ -93,8 +103,6 @@ impl SearchService {
             last_built,
             model: self.config.lock().unwrap().model.clone(),
             enabled: self.is_enabled(),
-            model_present: self.model_present(),
-            model_size_bytes: self.model_size_bytes(),
             error: self.last_error.lock().unwrap().clone(),
         }
     }
@@ -311,35 +319,6 @@ impl SearchService {
         self.cancel.store(true, Ordering::Relaxed);
     }
 
-    /// Returns true if the local model directory exists and contains at least one file.
-    // wired by commands in next task
-    #[allow(dead_code)]
-    pub fn model_present(&self) -> bool {
-        if !self.models_dir.exists() {
-            return false;
-        }
-        std::fs::read_dir(&self.models_dir)
-            .map(|mut d| d.next().is_some())
-            .unwrap_or(false)
-    }
-
-    /// Recursively sum file sizes under the models directory (returns 0 if absent).
-    // wired by commands in next task
-    #[allow(dead_code)]
-    pub fn model_size_bytes(&self) -> u64 {
-        dir_size(&self.models_dir)
-    }
-
-    /// Cancel any in-flight build, disable search, reset the embedder, and delete model files.
-    pub fn delete_model(&self, app_data_dir: &Path) -> Result<(), String> {
-        self.cancel_build();
-        self.enabled.store(false, Ordering::Relaxed);
-        write_enabled(app_data_dir, false);
-        *self.embedder.write().unwrap() = None;
-        let _ = std::fs::remove_dir_all(&self.models_dir);
-        Ok(())
-    }
-
     /// Current automatic-indexing trigger settings.
     pub fn triggers(&self) -> IndexTriggers {
         *self.triggers.lock().unwrap()
@@ -358,8 +337,8 @@ impl SearchService {
         cfg
     }
 
-    /// Delete the stored OpenAI API key from the OS keychain. If the active
-    /// provider was OpenAI, revert to the local backend so search stays usable.
+    /// Delete the stored OpenAI API key from the OS keychain and turn search
+    /// off (without a key there is no embedding backend).
     pub fn delete_api_key(&self, app_data_dir: &Path) -> Result<(), String> {
         // Delete the keychain entry for the OpenAI provider; ignore "no entry".
         if let Ok(entry) = keyring::Entry::new(KEYRING_SERVICE, "openai") {
@@ -369,18 +348,10 @@ impl SearchService {
                 Err(e) => return Err(e.to_string()),
             }
         }
-        let provider = self.config.lock().unwrap().provider.clone();
-        if provider == "openai" {
-            self.set_backend(
-                BackendConfig {
-                    provider: "local".into(),
-                    model: "multilingual-e5-small".into(),
-                    api_key: None,
-                    has_key: false,
-                },
-                app_data_dir,
-            )?;
-        }
+        self.cancel_build();
+        self.enabled.store(false, Ordering::Relaxed);
+        write_enabled(app_data_dir, false);
+        *self.embedder.write().unwrap() = None;
         Ok(())
     }
 
@@ -389,28 +360,19 @@ impl SearchService {
         mut cfg: BackendConfig,
         app_data_dir: &std::path::Path,
     ) -> Result<(), String> {
+        // OpenAI is the only backend; ignore any other provider value.
+        cfg.provider = "openai".into();
         let has_key = cfg.api_key.is_some();
         if let Some(key) = cfg.api_key.take() {
             write_key(&cfg, &key)?;
         }
-        // When switching to OpenAI with a key present, auto-enable (no local download needed).
-        if cfg.provider == "openai" && (has_key || read_key(&cfg).is_some()) {
+        // With a key present, auto-enable search (no download needed).
+        if has_key || read_key(&cfg).is_some() {
             self.enabled.store(true, Ordering::Relaxed);
             write_enabled(app_data_dir, true);
         }
         save_config(app_data_dir, &cfg);
-        let new_dim = expected_dim(&cfg);
-        let old_dim = self.index.read().unwrap().dim();
-        // NOTE: a backend switch does not pause an in-flight background build();
-        // Task 12 re-triggers build() after switching, so the new index is fully
-        // repopulated. Source of truth is ~/.claude, so no data can be lost here.
-        if new_dim != old_dim {
-            let _ = std::fs::remove_file(&self.db_path);
-            let new_index =
-                SearchIndex::open(&self.db_path, new_dim).map_err(|e| e.to_string())?;
-            *self.index.write().unwrap() = Arc::new(new_index);
-        }
-        // Reset embedder to lazy — will be loaded on next query/build
+        // Reset embedder to lazy — will be loaded on next query/build.
         *self.embedder.write().unwrap() = None;
         *self.config.lock().unwrap() = cfg;
         Ok(())
@@ -444,24 +406,6 @@ fn write_triggers(dir: &Path, triggers: &IndexTriggers) {
     }
 }
 
-fn dir_size(path: &Path) -> u64 {
-    if !path.exists() {
-        return 0;
-    }
-    let mut total = 0u64;
-    if let Ok(entries) = std::fs::read_dir(path) {
-        for entry in entries.flatten() {
-            let child = entry.path();
-            if child.is_dir() {
-                total += dir_size(&child);
-            } else if let Ok(meta) = child.metadata() {
-                total += meta.len();
-            }
-        }
-    }
-    total
-}
-
 fn truncate(s: &str, n: usize) -> String {
     let t: String = s.chars().take(n).collect();
     t.replace('\n', " ").trim().to_string()
@@ -488,8 +432,8 @@ fn load_config(dir: &std::path::Path) -> BackendConfig {
         .ok()
         .and_then(|s| serde_json::from_str(&s).ok())
         .unwrap_or(BackendConfig {
-            provider: "local".into(),
-            model: "multilingual-e5-small".into(),
+            provider: "openai".into(),
+            model: "text-embedding-3-small".into(),
             api_key: None,
             has_key: false,
         })
@@ -501,15 +445,12 @@ fn save_config(dir: &std::path::Path, cfg: &BackendConfig) {
     }
 }
 
-/// Whether a non-local provider has an API key stored in the keychain.
+/// Whether the OpenAI API key is stored in the keychain.
 fn key_present(cfg: &BackendConfig) -> bool {
     read_key(cfg).is_some()
 }
 
 fn read_key(cfg: &BackendConfig) -> Option<String> {
-    if cfg.provider == "local" {
-        return None;
-    }
     keyring::Entry::new(KEYRING_SERVICE, &cfg.provider)
         .ok()?
         .get_password()

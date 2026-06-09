@@ -105,8 +105,6 @@ pub fn search_index_status(state: State<'_, AppState>) -> IndexStatus {
             last_built: None,
             model: "unavailable".into(),
             enabled: false,
-            model_present: false,
-            model_size_bytes: 0,
             error: None,
         },
     }
@@ -127,8 +125,8 @@ pub fn search_get_backend(state: State<'_, AppState>) -> BackendConfig {
     match &state.search {
         Some(s) => s.config(),
         None => BackendConfig {
-            provider: "local".into(),
-            model: "multilingual-e5-small".into(),
+            provider: "openai".into(),
+            model: "text-embedding-3-small".into(),
             api_key: None,
             has_key: false,
         },
@@ -226,20 +224,6 @@ pub fn search_set_triggers(
     let dir = app.path().app_data_dir().map_err(|e| e.to_string())?;
     svc.set_triggers(triggers, &dir);
     Ok(())
-}
-
-#[tauri::command]
-pub async fn search_delete_model(
-    app: tauri::AppHandle,
-    state: State<'_, AppState>,
-) -> Result<(), String> {
-    let Some(svc) = state.search.clone() else {
-        return Err("search unavailable".into());
-    };
-    let dir = app.path().app_data_dir().map_err(|e| e.to_string())?;
-    tokio::task::spawn_blocking(move || svc.delete_model(&dir))
-        .await
-        .map_err(|e| e.to_string())?
 }
 
 #[tauri::command]

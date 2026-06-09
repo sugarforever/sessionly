@@ -23,13 +23,11 @@ export interface IndexStatus {
   lastBuilt: number | null
   model: string
   enabled: boolean
-  modelPresent: boolean
-  modelSizeBytes: number
   error: string | null
 }
 
 export interface BackendConfig {
-  provider: 'local' | 'openai'
+  provider: 'openai'
   model: string
   apiKey?: string
   hasKey: boolean

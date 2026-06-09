@@ -27,7 +27,6 @@ tiny_http = "0.12"
 tauri-plugin-process = "2"
 tauri-plugin-updater = "2"
 tauri-plugin-notification = "2"
-fastembed = "4"
 rusqlite = { version = "0.32", features = ["bundled"] }
 sqlite-vec = "0.1"
 reqwest = { version = "0.12", features = ["json", "blocking", "rustls-tls"], default-features = false }

@@ -1,4 +1,4 @@
-use fastembed::{EmbeddingModel, InitOptions, TextEmbedding};
+use crate::search::types::BackendConfig;
 
 pub trait Embedder: Send + Sync {
     #[allow(dead_code)]
@@ -8,45 +8,6 @@ pub trait Embedder: Send + Sync {
     fn embed_documents(&self, texts: &[String]) -> Result<Vec<Vec<f32>>, String>;
     fn embed_query(&self, text: &str) -> Result<Vec<f32>, String>;
 }
-
-pub struct LocalEmbedder {
-    model: TextEmbedding,
-}
-
-impl LocalEmbedder {
-    pub fn new(cache_dir: std::path::PathBuf) -> Result<Self, String> {
-        let model = TextEmbedding::try_new(
-            InitOptions::new(EmbeddingModel::MultilingualE5Small)
-                .with_cache_dir(cache_dir)
-                .with_show_download_progress(true),
-        )
-        .map_err(|e| format!("load embedding model: {e}"))?;
-        Ok(Self { model })
-    }
-}
-
-impl Embedder for LocalEmbedder {
-    fn id(&self) -> String {
-        "multilingual-e5-small".into()
-    }
-    fn dim(&self) -> usize {
-        384
-    }
-
-    fn embed_documents(&self, texts: &[String]) -> Result<Vec<Vec<f32>>, String> {
-        // e5 prefix rule: documents are "passage: ..."
-        let prefixed: Vec<String> = texts.iter().map(|t| format!("passage: {t}")).collect();
-        self.model.embed(prefixed, None).map_err(|e| e.to_string())
-    }
-
-    fn embed_query(&self, text: &str) -> Result<Vec<f32>, String> {
-        let prefixed = vec![format!("query: {text}")];
-        let mut v = self.model.embed(prefixed, None).map_err(|e| e.to_string())?;
-        Ok(v.pop().unwrap_or_default())
-    }
-}
-
-use crate::search::types::BackendConfig;
 
 pub struct OpenAiEmbedder {
     api_key: String,
@@ -116,13 +77,9 @@ impl Embedder for OpenAiEmbedder {
 pub fn build_embedder(
     cfg: &BackendConfig,
     api_key: Option<String>,
-    cache_dir: std::path::PathBuf,
 ) -> Result<Box<dyn Embedder>, String> {
-    match cfg.provider.as_str() {
-        "openai" => {
-            let key = api_key.ok_or_else(|| "OpenAI API key not set".to_string())?;
-            Ok(Box::new(OpenAiEmbedder::new(key, cfg.model.clone())))
-        }
-        _ => Ok(Box::new(LocalEmbedder::new(cache_dir)?)),
-    }
+    // OpenAI is the only embedding backend. The local on-device model was
+    // removed; any other provider value is treated as an unconfigured backend.
+    let key = api_key.ok_or_else(|| "OpenAI API key not set".to_string())?;
+    Ok(Box::new(OpenAiEmbedder::new(key, cfg.model.clone())))
 }
