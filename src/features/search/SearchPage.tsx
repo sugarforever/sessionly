@@ -27,20 +27,18 @@ export function SearchPage() {
   return (
     <div className="h-full overflow-y-auto scrollbar-thin">
       <div className="mx-auto max-w-3xl space-y-6 p-6">
-        <div className="space-y-2">
-          <h1 className="text-4xl font-bold tracking-tight">Search</h1>
-          <p className="text-lg text-muted-foreground">Search across all your sessions</p>
-        </div>
-        <div className="flex items-center gap-2 rounded-lg border border-border px-3">
-          <SearchIcon className="h-4 w-4 text-muted-foreground" />
+        <h1 className="text-2xl font-semibold tracking-tight">Search</h1>
+        <div className="flex items-center gap-3 rounded-xl border border-border bg-card px-4 transition-colors focus-within:border-primary/50">
+          <SearchIcon className="h-5 w-5 shrink-0 text-muted-foreground" />
           <input
+            autoFocus
             value={input}
             onChange={(e) => {
               setInput(e.target.value)
               search(e.target.value)
             }}
-            placeholder="Search sessions…"
-            className="h-11 w-full bg-transparent text-sm outline-none"
+            placeholder="Find a message, file path, or command across your sessions…"
+            className="h-12 w-full bg-transparent text-base outline-none placeholder:text-muted-foreground"
           />
           {loading && <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />}
         </div>
