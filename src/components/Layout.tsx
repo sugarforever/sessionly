@@ -1,6 +1,7 @@
 import { type ReactNode, useState, createContext, useContext } from 'react'
 import { Sidebar } from './Sidebar'
 import { UpdateNotification } from './UpdateNotification'
+import { IndexingStatusBar } from './IndexingStatusBar'
 
 interface LayoutContextType {
   sidebarCollapsed: boolean
@@ -25,7 +26,10 @@ export function Layout({ children }: { children: ReactNode }) {
           collapsed={sidebarCollapsed}
           onToggle={() => setSidebarCollapsed(!sidebarCollapsed)}
         />
-        <main className="flex-1 overflow-hidden bg-background">{children}</main>
+        <main className="flex flex-1 flex-col overflow-hidden bg-background">
+          <IndexingStatusBar />
+          <div className="min-h-0 flex-1">{children}</div>
+        </main>
         <UpdateNotification />
       </div>
     </LayoutContext.Provider>
