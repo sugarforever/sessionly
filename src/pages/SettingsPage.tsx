@@ -4,6 +4,35 @@ import type { HookStatus } from '@/types/session-types'
 import type { BackendConfig, IndexStatus } from '@/types/search'
 import { useNotificationContext } from '@/contexts/NotificationContext'
 
+/*
+ * This panel adopts the Linear design system (Open Design binding in
+ * .open-design.json). It is a self-contained dark surface — near-black
+ * canvas, translucent white borders, indigo accent, Inter 510 — and is
+ * intentionally distinct from the rest of the app's black & white theme.
+ */
+
+// Linear tokens (kept local — this surface does not follow the app theme)
+const PAGE_BG = '#08090a'
+const TEXT = '#f7f8f8' // primary
+const TEXT_2 = '#d0d6e0' // secondary
+const MUTED = '#8a8f98' // tertiary
+const SUBTLE = '#62666d' // quaternary
+const VIOLET = '#7170ff'
+
+const card = 'rounded-xl border border-white/[0.08] bg-white/[0.02] p-6'
+const btn =
+  'rounded-md border border-white/[0.08] bg-white/[0.03] px-3 py-1.5 text-[13px] text-[#e2e4e7] transition-colors hover:bg-white/[0.07] disabled:opacity-40 disabled:cursor-not-allowed'
+const btnPrimary =
+  'rounded-md bg-[#5e6ad2] px-3.5 py-1.5 text-[13px] text-white transition-colors hover:bg-[#828fff] disabled:opacity-40'
+
+function Overline({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="text-[11px] font-medium uppercase tracking-[0.08em] text-[#62666d]">
+      {children}
+    </div>
+  )
+}
+
 function Toggle({
   checked,
   onChange,
@@ -19,17 +48,21 @@ function Toggle({
       aria-checked={checked}
       onClick={onChange}
       disabled={disabled}
-      className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
-        disabled ? 'opacity-40 cursor-not-allowed' : ''
-      } ${checked ? 'bg-foreground' : 'bg-muted-foreground/30'}`}
+      className={`relative inline-flex h-5 w-9 shrink-0 items-center rounded-full transition-colors ${
+        disabled ? 'cursor-not-allowed opacity-40' : ''
+      } ${checked ? 'bg-[#5e6ad2]' : 'bg-white/[0.14]'}`}
     >
       <span
-        className={`inline-block h-4 w-4 rounded-full bg-background transition-transform ${
-          checked ? 'translate-x-6' : 'translate-x-1'
+        className={`inline-block h-3.5 w-3.5 rounded-full bg-[#f7f8f8] transition-transform ${
+          checked ? 'translate-x-[18px]' : 'translate-x-[3px]'
         }`}
       />
     </button>
   )
+}
+
+function StatusDot({ color }: { color: string }) {
+  return <span className="inline-block h-2 w-2 rounded-full" style={{ backgroundColor: color }} />
 }
 
 export function SettingsPage() {
@@ -132,250 +165,296 @@ export function SettingsPage() {
     clearTimeout(testTimerRef.current)
     setTestResult(null)
     await sendTest()
-    setTestResult('Sent! Check Notification Center if you don\u2019t see it.')
+    setTestResult('Sent! Check Notification Center if you don’t see it.')
     testTimerRef.current = setTimeout(() => setTestResult(null), 6000)
   }
 
   useEffect(() => () => clearTimeout(testTimerRef.current), [])
 
+  const backendPill = (provider: 'local' | 'openai', label: string, sub: string) => (
+    <button
+      onClick={() => saveBackend(provider)}
+      className={`flex-1 rounded-md border px-3 py-2 text-left transition-colors ${
+        backend.provider === provider
+          ? 'border-[#5e6ad2]/70 bg-[#5e6ad2]/[0.14]'
+          : 'border-white/[0.08] bg-white/[0.02] hover:bg-white/[0.05]'
+      }`}
+    >
+      <div className="text-[13px]" style={{ color: backend.provider === provider ? TEXT : TEXT_2 }}>
+        {label}
+      </div>
+      <div className="text-[11px]" style={{ color: SUBTLE }}>
+        {sub}
+      </div>
+    </button>
+  )
+
   return (
-    <div className="space-y-8">
-      <div className="space-y-2">
-        <h1 className="text-4xl font-bold tracking-tight">Settings</h1>
-        <p className="text-lg text-muted-foreground">Configure hooks, notifications, and search</p>
-      </div>
-
-      {/* Hooks Section */}
-      <div className="rounded-lg border p-6 space-y-4">
-        <h2 className="text-xl font-semibold">Hooks</h2>
-        <p className="text-sm text-muted-foreground">
-          Claude Code hooks enable real-time session state tracking via an HTTP server.
-        </p>
-        <div className="space-y-3">
-          <div className="flex items-center gap-3">
-            <span
-              className={`inline-block h-2.5 w-2.5 rounded-full ${
-                hookStatus?.serverRunning ? 'bg-green-500' : 'bg-red-500'
-              }`}
-            />
-            <span className="text-sm">
-              Hook server: {hookStatus?.serverRunning ? 'Running' : 'Stopped'}
-              {hookStatus?.serverRunning && ` on port ${hookStatus.port}`}
-            </span>
-          </div>
-          <div className="flex items-center gap-3">
-            <span
-              className={`inline-block h-2.5 w-2.5 rounded-full ${
-                hookStatus?.hooksInstalled ? 'bg-green-500' : 'bg-yellow-500'
-              }`}
-            />
-            <span className="text-sm">
-              Hooks: {hookStatus?.hooksInstalled ? 'Installed' : 'Not installed'}
-            </span>
-          </div>
-          <button
-            onClick={handleInstallToggle}
-            disabled={loading}
-            className="rounded border px-4 py-2 text-sm hover:bg-accent disabled:opacity-50"
+    <div
+      className="h-full overflow-y-auto scrollbar-thin"
+      style={{ backgroundColor: PAGE_BG, fontFeatureSettings: '"cv01", "ss03"' }}
+    >
+      <div className="mx-auto max-w-3xl space-y-6 px-8 py-10">
+        {/* Header */}
+        <div className="space-y-1.5">
+          <h1
+            className="text-[32px] leading-tight"
+            style={{ color: TEXT, fontWeight: 510, letterSpacing: '-0.704px' }}
           >
-            {loading ? '...' : hookStatus?.hooksInstalled ? 'Uninstall Hooks' : 'Install Hooks'}
-          </button>
+            Settings
+          </h1>
+          <p className="text-[15px]" style={{ color: MUTED, letterSpacing: '-0.165px' }}>
+            Configure hooks, notifications, and search
+          </p>
         </div>
-      </div>
 
-      {/* Notifications Section */}
-      <div className="rounded-lg border p-6 space-y-5">
-        <div className="flex items-center justify-between">
-          <div>
-            <h2 className="text-xl font-semibold">Notifications</h2>
-            <p className="text-sm text-muted-foreground mt-1">
-              Receive native notifications when Claude Code sessions need your attention.
+        {/* Hooks */}
+        <section className={card + ' space-y-4'}>
+          <div className="space-y-1">
+            <h2 className="text-[18px]" style={{ color: TEXT, fontWeight: 510 }}>
+              Hooks
+            </h2>
+            <p className="text-[13px]" style={{ color: MUTED }}>
+              Claude Code hooks enable real-time session state tracking via an HTTP server.
             </p>
           </div>
-          <Toggle
-            checked={prefs.enabled}
-            onChange={() => updatePrefs({ enabled: !prefs.enabled })}
-          />
-        </div>
+          <div className="space-y-2.5">
+            <div className="flex items-center gap-2.5 text-[13px]" style={{ color: TEXT_2 }}>
+              <StatusDot color={hookStatus?.serverRunning ? '#27a644' : '#e5484d'} />
+              <span>
+                Hook server: {hookStatus?.serverRunning ? 'Running' : 'Stopped'}
+                {hookStatus?.serverRunning && ` on port ${hookStatus.port}`}
+              </span>
+            </div>
+            <div className="flex items-center gap-2.5 text-[13px]" style={{ color: TEXT_2 }}>
+              <StatusDot color={hookStatus?.hooksInstalled ? '#27a644' : '#f5a623'} />
+              <span>Hooks: {hookStatus?.hooksInstalled ? 'Installed' : 'Not installed'}</span>
+            </div>
+            <button onClick={handleInstallToggle} disabled={loading} className={btn}>
+              {loading ? '…' : hookStatus?.hooksInstalled ? 'Uninstall hooks' : 'Install hooks'}
+            </button>
+          </div>
+        </section>
 
-        {/* Per-event toggles */}
-        <div className="space-y-3 pl-1">
-          <div className="flex items-center justify-between">
-            <div>
-              <span className="text-sm font-medium">Session completed</span>
-              <p className="text-xs text-muted-foreground">
-                Claude Code finished and is waiting for input
+        {/* Notifications */}
+        <section className={card + ' space-y-5'}>
+          <div className="flex items-start justify-between gap-4">
+            <div className="space-y-1">
+              <h2 className="text-[18px]" style={{ color: TEXT, fontWeight: 510 }}>
+                Notifications
+              </h2>
+              <p className="text-[13px]" style={{ color: MUTED }}>
+                Receive native notifications when Claude Code sessions need your attention.
               </p>
             </div>
             <Toggle
-              checked={prefs.showOnComplete}
-              onChange={() => updatePrefs({ showOnComplete: !prefs.showOnComplete })}
-              disabled={!prefs.enabled}
+              checked={prefs.enabled}
+              onChange={() => updatePrefs({ enabled: !prefs.enabled })}
             />
           </div>
-          <div className="flex items-center justify-between">
-            <div>
-              <span className="text-sm font-medium">Error occurred</span>
-              <p className="text-xs text-muted-foreground">
-                A tool error was detected in a session
-              </p>
-            </div>
-            <Toggle
-              checked={prefs.showOnError}
-              onChange={() => updatePrefs({ showOnError: !prefs.showOnError })}
-              disabled={!prefs.enabled}
-            />
-          </div>
-        </div>
 
-        {/* Test button */}
-        <div className="flex items-center gap-3 pt-2 border-t">
-          <button
-            onClick={handleTestNotification}
-            className="rounded border px-4 py-2 text-sm hover:bg-accent"
-          >
-            Send Test Notification
-          </button>
-          {testResult && <span className="text-sm text-muted-foreground">{testResult}</span>}
-        </div>
-      </div>
-
-      {/* Search Section */}
-      <div className="rounded-lg border p-6 space-y-4">
-        <h2 className="text-xl font-semibold">Search</h2>
-        <p className="text-sm text-muted-foreground">
-          Choose how sessions are embedded for semantic search. Local runs on your machine (private,
-          free).
-        </p>
-        <div className="flex gap-2">
-          <button
-            onClick={() => saveBackend('local')}
-            className={`rounded border px-4 py-2 text-sm ${backend.provider === 'local' ? 'bg-accent' : 'hover:bg-accent'}`}
-          >
-            Local · multilingual-e5-small
-          </button>
-          <button
-            onClick={() => saveBackend('openai')}
-            className={`rounded border px-4 py-2 text-sm ${backend.provider === 'openai' ? 'bg-accent' : 'hover:bg-accent'}`}
-          >
-            OpenAI · text-embedding-3-small
-          </button>
-        </div>
-        {backend.provider === 'openai' && (
-          <input
-            type="password"
-            value={apiKey}
-            onChange={(e) => setApiKey(e.target.value)}
-            onBlur={() => saveBackend('openai')}
-            placeholder="OpenAI API key (stored in your OS keychain)"
-            className="w-full rounded border bg-transparent px-3 py-2 text-sm outline-none"
-          />
-        )}
-        {idxStatus === null ? (
-          <p className="text-sm text-muted-foreground">Loading…</p>
-        ) : !idxStatus.enabled ? (
           <div className="space-y-3">
-            <p className="text-sm text-muted-foreground">
-              Search is off. Semantic search runs locally and needs a one-time ~120MB model
-              download.
-            </p>
-            <button
-              onClick={async () => {
-                await api.searchEnable()
-                await refreshIdxStatus()
-              }}
-              className="rounded border px-3 py-1 text-xs hover:bg-accent"
-            >
-              Enable search & download
-            </button>
+            <div className="flex items-center justify-between gap-4">
+              <div>
+                <div className="text-[13px]" style={{ color: TEXT_2 }}>
+                  Session completed
+                </div>
+                <p className="text-[12px]" style={{ color: SUBTLE }}>
+                  Claude Code finished and is waiting for input
+                </p>
+              </div>
+              <Toggle
+                checked={prefs.showOnComplete}
+                onChange={() => updatePrefs({ showOnComplete: !prefs.showOnComplete })}
+                disabled={!prefs.enabled}
+              />
+            </div>
+            <div className="flex items-center justify-between gap-4">
+              <div>
+                <div className="text-[13px]" style={{ color: TEXT_2 }}>
+                  Error occurred
+                </div>
+                <p className="text-[12px]" style={{ color: SUBTLE }}>
+                  A tool error was detected in a session
+                </p>
+              </div>
+              <Toggle
+                checked={prefs.showOnError}
+                onChange={() => updatePrefs({ showOnError: !prefs.showOnError })}
+                disabled={!prefs.enabled}
+              />
+            </div>
           </div>
-        ) : idxStatus.building ? (
-          <div className="flex items-center gap-3 text-sm text-muted-foreground">
-            <span>
-              Indexing with {idxStatus.model}… {idxStatus.indexed}/{idxStatus.total}
-            </span>
-            <button
-              onClick={async () => {
-                await api.searchCancelBuild()
-                await refreshIdxStatus()
-              }}
-              className="rounded border px-3 py-1 text-xs hover:bg-accent"
-            >
-              Stop
+
+          <div className="flex items-center gap-3 border-t border-white/[0.06] pt-4">
+            <button onClick={handleTestNotification} className={btn}>
+              Send test notification
             </button>
-          </div>
-        ) : (
-          <div className="flex items-center gap-3 text-sm text-muted-foreground">
-            <span>Indexed {idxStatus.indexed} sessions</span>
-            <button
-              onClick={async () => {
-                await api.searchReindex()
-                await refreshIdxStatus()
-              }}
-              className="rounded border px-3 py-1 text-xs hover:bg-accent"
-            >
-              Rebuild index
-            </button>
-            {idxStatus.modelPresent && (
-              <button
-                onClick={async () => {
-                  if (
-                    !window.confirm(
-                      'Remove the downloaded search model? You can re-download it anytime.'
-                    )
-                  )
-                    return
-                  await api.searchDeleteModel()
-                  await refreshIdxStatus()
-                }}
-                className="rounded border px-3 py-1 text-xs hover:bg-accent"
-              >
-                Remove model ({mb(idxStatus.modelSizeBytes)})
-              </button>
+            {testResult && (
+              <span className="text-[12px]" style={{ color: MUTED }}>
+                {testResult}
+              </span>
             )}
           </div>
-        )}
+        </section>
 
-        {projects.length > 0 && (
-          <div className="space-y-2">
-            <div className="flex items-center justify-between">
-              <span className="text-sm font-medium">Projects to index</span>
-              <button
-                onClick={async () => {
-                  setScope(null)
-                  await api.searchSetScope(null)
-                  refreshIdxStatus()
-                }}
-                className="text-xs text-muted-foreground hover:text-foreground"
-              >
-                Select all
-              </button>
-            </div>
-            <div className="max-h-44 overflow-y-auto rounded border border-border p-2 space-y-1 scrollbar-thin">
-              {projects.map((p) => {
-                const included = scope === null || scope.includes(p.projectEncoded)
-                return (
-                  <label
-                    key={p.projectEncoded}
-                    className="flex items-center gap-2 text-sm cursor-pointer hover:bg-accent/50 rounded px-1 py-0.5"
-                  >
-                    <input
-                      type="checkbox"
-                      checked={included}
-                      onChange={() => toggleProject(p.projectEncoded)}
-                    />
-                    <span className="truncate">{p.project}</span>
-                  </label>
-                )
-              })}
-            </div>
-            <p className="text-xs text-muted-foreground">
-              {scope === null
-                ? 'Indexing all projects.'
-                : `Indexing ${scope.length} of ${projects.length} projects.`}
+        {/* Search */}
+        <section className={card + ' space-y-6'}>
+          <div className="space-y-1">
+            <h2 className="text-[18px]" style={{ color: TEXT, fontWeight: 510 }}>
+              Search
+            </h2>
+            <p className="text-[13px]" style={{ color: MUTED }}>
+              Semantic search over your sessions. Local embeddings run on your machine — private and
+              free.
             </p>
           </div>
-        )}
+
+          {/* Status / lifecycle */}
+          <div className="space-y-3">
+            <Overline>Status</Overline>
+            {idxStatus === null ? (
+              <p className="text-[13px]" style={{ color: MUTED }}>
+                Loading…
+              </p>
+            ) : !idxStatus.enabled ? (
+              <div className="space-y-3">
+                <p className="text-[13px]" style={{ color: MUTED }}>
+                  Search is off. Semantic search runs locally and needs a one-time ~120&nbsp;MB
+                  model download.
+                </p>
+                <button
+                  onClick={async () => {
+                    await api.searchEnable()
+                    await refreshIdxStatus()
+                  }}
+                  className={btnPrimary}
+                >
+                  Enable search &amp; download
+                </button>
+              </div>
+            ) : idxStatus.building ? (
+              <div className="flex flex-wrap items-center gap-3">
+                <div className="flex items-center gap-2.5 text-[13px]" style={{ color: TEXT_2 }}>
+                  <StatusDot color={VIOLET} />
+                  <span>
+                    Indexing with {idxStatus.model}…{' '}
+                    <span style={{ color: TEXT }}>
+                      {idxStatus.indexed}/{idxStatus.total}
+                    </span>
+                  </span>
+                </div>
+                <button
+                  onClick={async () => {
+                    await api.searchCancelBuild()
+                    await refreshIdxStatus()
+                  }}
+                  className={btn}
+                >
+                  Stop
+                </button>
+              </div>
+            ) : (
+              <div className="flex flex-wrap items-center gap-3">
+                <div className="flex items-center gap-2.5 text-[13px]" style={{ color: TEXT_2 }}>
+                  <StatusDot color="#27a644" />
+                  <span>Indexed {idxStatus.indexed} sessions</span>
+                </div>
+                <button
+                  onClick={async () => {
+                    await api.searchReindex()
+                    await refreshIdxStatus()
+                  }}
+                  className={btn}
+                >
+                  Rebuild index
+                </button>
+                {idxStatus.modelPresent && (
+                  <button
+                    onClick={async () => {
+                      if (
+                        !window.confirm(
+                          'Remove the downloaded search model? You can re-download it anytime.'
+                        )
+                      )
+                        return
+                      await api.searchDeleteModel()
+                      await refreshIdxStatus()
+                    }}
+                    className={btn}
+                  >
+                    Remove model ({mb(idxStatus.modelSizeBytes)})
+                  </button>
+                )}
+              </div>
+            )}
+          </div>
+
+          {/* Embedding backend */}
+          <div className="space-y-3 border-t border-white/[0.06] pt-5">
+            <Overline>Embedding backend</Overline>
+            <div className="flex gap-2">
+              {backendPill('local', 'Local', 'multilingual-e5-small')}
+              {backendPill('openai', 'OpenAI', 'text-embedding-3-small')}
+            </div>
+            {backend.provider === 'openai' && (
+              <input
+                type="password"
+                value={apiKey}
+                onChange={(e) => setApiKey(e.target.value)}
+                onBlur={() => saveBackend('openai')}
+                placeholder="OpenAI API key (stored in your OS keychain)"
+                className="w-full rounded-md border border-white/[0.08] bg-white/[0.02] px-3 py-2 text-[13px] outline-none placeholder:text-[#62666d] focus:border-[#5e6ad2]/60"
+                style={{ color: TEXT }}
+              />
+            )}
+          </div>
+
+          {/* Project scope */}
+          {projects.length > 0 && (
+            <div className="space-y-3 border-t border-white/[0.06] pt-5">
+              <div className="flex items-center justify-between">
+                <Overline>Projects to index</Overline>
+                <button
+                  onClick={async () => {
+                    setScope(null)
+                    await api.searchSetScope(null)
+                    refreshIdxStatus()
+                  }}
+                  className="text-[12px] transition-colors hover:text-[#f7f8f8]"
+                  style={{ color: MUTED }}
+                >
+                  Select all
+                </button>
+              </div>
+              <div className="max-h-44 space-y-0.5 overflow-y-auto rounded-md border border-white/[0.08] bg-white/[0.02] p-2 scrollbar-thin">
+                {projects.map((p) => {
+                  const included = scope === null || scope.includes(p.projectEncoded)
+                  return (
+                    <label
+                      key={p.projectEncoded}
+                      className="flex cursor-pointer items-center gap-2.5 rounded px-1.5 py-1 text-[13px] hover:bg-white/[0.04]"
+                      style={{ color: included ? TEXT_2 : SUBTLE }}
+                    >
+                      <input
+                        type="checkbox"
+                        checked={included}
+                        onChange={() => toggleProject(p.projectEncoded)}
+                        className="accent-[#7170ff]"
+                      />
+                      <span className="truncate">{p.project}</span>
+                    </label>
+                  )
+                })}
+              </div>
+              <p className="text-[12px]" style={{ color: SUBTLE }}>
+                {scope === null
+                  ? 'Indexing all projects.'
+                  : `Indexing ${scope.length} of ${projects.length} projects.`}
+              </p>
+            </div>
+          )}
+        </section>
       </div>
     </div>
   )

@@ -1,0 +1,10 @@
+{
+  "version": 1,
+  "designSystem": {
+    "slug": "linear-app",
+    "path": "design-systems/linear-app"
+  },
+  "skill": null,
+  "target": "src/pages/SettingsPage.tsx (in-app component reskin)",
+  "boundAt": "2026-06-09T00:57:10Z"
+}
