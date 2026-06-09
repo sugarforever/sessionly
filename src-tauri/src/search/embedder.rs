@@ -12,22 +12,26 @@ pub trait Embedder: Send + Sync {
 pub struct OpenAiEmbedder {
     api_key: String,
     model: String,
+    client: reqwest::blocking::Client,
     #[allow(dead_code)]
     dim: usize,
 }
 
 impl OpenAiEmbedder {
-    pub fn new(api_key: String, model: String) -> Self {
-        // text-embedding-3-small = 1536 dims
-        Self { api_key, model, dim: 1536 }
-    }
-
-    fn call(&self, inputs: Vec<String>) -> Result<Vec<Vec<f32>>, String> {
+    pub fn new(api_key: String, model: String) -> Result<Self, String> {
+        // Build the HTTP client once and reuse it across batches so TLS setup
+        // and the connection pool are not rebuilt on every request.
         let client = reqwest::blocking::Client::builder()
             .timeout(std::time::Duration::from_secs(60))
             .build()
             .map_err(|e| e.to_string())?;
-        let resp = client
+        // text-embedding-3-small = 1536 dims
+        Ok(Self { api_key, model, client, dim: 1536 })
+    }
+
+    fn call(&self, inputs: Vec<String>) -> Result<Vec<Vec<f32>>, String> {
+        let resp = self
+            .client
             .post("https://api.openai.com/v1/embeddings")
             .bearer_auth(&self.api_key)
             .json(&serde_json::json!({ "model": self.model, "input": inputs }))
@@ -70,7 +74,11 @@ impl Embedder for OpenAiEmbedder {
         Ok(out)
     }
     fn embed_query(&self, text: &str) -> Result<Vec<f32>, String> {
-        Ok(self.call(vec![text.to_string()])?.pop().unwrap_or_default())
+        // Don't fall back to an empty vector — a 0-dim query would be handed to
+        // the vec MATCH and fail obscurely. Surface the real problem instead.
+        self.call(vec![text.to_string()])?
+            .pop()
+            .ok_or_else(|| "openai returned no embedding for query".to_string())
     }
 }
 
@@ -81,5 +89,5 @@ pub fn build_embedder(
     // OpenAI is the only embedding backend. The local on-device model was
     // removed; any other provider value is treated as an unconfigured backend.
     let key = api_key.ok_or_else(|| "OpenAI API key not set".to_string())?;
-    Ok(Box::new(OpenAiEmbedder::new(key, cfg.model.clone())))
+    Ok(Box::new(OpenAiEmbedder::new(key, cfg.model.clone())?))
 }

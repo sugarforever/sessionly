@@ -25,6 +25,31 @@ fn vec_bytes(v: &[f32]) -> Vec<u8> {
     out
 }
 
+/// Delete a session's rows from chunks + the FTS and vector shadow tables.
+/// Operates on a caller-supplied connection/transaction so the caller controls
+/// atomicity (the FTS 'delete' command must read each row's text before the
+/// `chunks` row is removed, so order matters).
+fn delete_session_rows(conn: &rusqlite::Connection, session_id: &str) -> rusqlite::Result<()> {
+    let ids: Vec<i64> = {
+        let mut stmt = conn.prepare("SELECT id FROM chunks WHERE session_id = ?1")?;
+        let ids = stmt
+            .query_map([session_id], |r| r.get::<_, i64>(0))?
+            .filter_map(Result::ok)
+            .collect();
+        ids
+    };
+    for id in &ids {
+        conn.execute(
+            "INSERT INTO chunks_fts(chunks_fts, rowid, text) VALUES('delete', ?1, (SELECT text FROM chunks WHERE id = ?1))",
+            [id],
+        )?;
+        conn.execute("DELETE FROM vec_chunks WHERE chunk_id = ?1", [id])?;
+    }
+    conn.execute("DELETE FROM chunks WHERE session_id = ?1", [session_id])?;
+    conn.execute("DELETE FROM session_hash WHERE session_id = ?1", [session_id])?;
+    Ok(())
+}
+
 pub struct SearchIndex {
     conn: Mutex<Connection>,
     #[allow(dead_code)] // reserved for dimension-change detection
@@ -127,30 +152,22 @@ impl SearchIndex {
         Ok(())
     }
 
+    #[cfg(test)]
     pub fn delete_session(&self, session_id: &str) -> rusqlite::Result<()> {
-        let conn = self.conn.lock().unwrap();
-        let mut stmt = conn.prepare("SELECT id FROM chunks WHERE session_id = ?1")?;
-        let ids: Vec<i64> = stmt
-            .query_map([session_id], |r| r.get::<_, i64>(0))?
-            .filter_map(Result::ok)
-            .collect();
-        drop(stmt);
-        for id in &ids {
-            conn.execute(
-                "INSERT INTO chunks_fts(chunks_fts, rowid, text) VALUES('delete', ?1, (SELECT text FROM chunks WHERE id = ?1))",
-                [id],
-            )?;
-            conn.execute("DELETE FROM vec_chunks WHERE chunk_id = ?1", [id])?;
-        }
-        conn.execute("DELETE FROM chunks WHERE session_id = ?1", [session_id])?;
-        conn.execute("DELETE FROM session_hash WHERE session_id = ?1", [session_id])?;
-        Ok(())
+        let mut conn = self.conn.lock().unwrap();
+        let tx = conn.transaction()?;
+        delete_session_rows(&tx, session_id)?;
+        tx.commit()
     }
 
     pub fn replace_session(&self, session_id: &str, rows: &[ChunkRow]) -> rusqlite::Result<()> {
-        self.delete_session(session_id)?;
+        // Delete + re-insert in a single transaction so a concurrent reader
+        // (other index workers, the live hook path) never observes the session
+        // half-deleted, and a failure mid-way can't leave the chunks/FTS/vec
+        // tables inconsistent.
         let mut conn = self.conn.lock().unwrap();
         let tx = conn.transaction()?;
+        delete_session_rows(&tx, session_id)?;
         for row in rows {
             tx.execute(
                 "INSERT INTO chunks(session_id, project_encoded, project, session_title, message_uuid, role, start_time, text)

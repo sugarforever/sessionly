@@ -142,17 +142,11 @@ pub async fn search_delete_api_key(
         return Err("search unavailable".into());
     };
     let dir = app.path().app_data_dir().map_err(|e| e.to_string())?;
-    let svc_for_build = svc.clone();
-    let res = tokio::task::spawn_blocking(move || svc.delete_api_key(&dir))
+    // Deleting the key turns search off (no backend without a key); there is
+    // nothing to rebuild.
+    tokio::task::spawn_blocking(move || svc.delete_api_key(&dir))
         .await
-        .map_err(|e| e.to_string())?;
-    // if we reverted to local, rebuild to repopulate the (wiped) index
-    if res.is_ok() {
-        std::thread::spawn(move || {
-            let _ = svc_for_build.build();
-        });
-    }
-    res
+        .map_err(|e| e.to_string())?
 }
 
 #[tauri::command]

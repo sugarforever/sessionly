@@ -93,12 +93,12 @@ impl SearchService {
             .ok()
             .flatten()
             .and_then(|s| s.parse().ok());
+        // One COUNT(DISTINCT) — it locks the same connection the index workers
+        // write to, so don't run it twice on the polled status path.
+        let indexed = idx.distinct_session_count().unwrap_or(0);
         IndexStatus {
-            indexed: idx.distinct_session_count().unwrap_or(0),
-            total: self
-                .total
-                .load(Ordering::Relaxed)
-                .max(idx.distinct_session_count().unwrap_or(0)),
+            indexed,
+            total: self.total.load(Ordering::Relaxed).max(indexed),
             building: self.building.load(Ordering::Relaxed),
             last_built,
             model: self.config.lock().unwrap().model.clone(),
@@ -163,7 +163,9 @@ impl SearchService {
                 break result;
             }
         };
-        self.cancel.store(false, Ordering::SeqCst);
+        // NOTE: do not clear `cancel` here. Each loop iteration resets it before
+        // build_inner, and clearing it on exit could erase a cancel that a new
+        // build owner (re-acquired during a rerun handoff) is relying on.
         last
     }
 
