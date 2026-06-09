@@ -30,6 +30,14 @@ tauri-plugin-notification = "2"
 fastembed = "4"
 rusqlite = { version = "0.32", features = ["bundled"] }
 sqlite-vec = "0.1"
-keyring = "3"
 reqwest = { version = "0.12", features = ["json", "blocking", "rustls-tls"], default-features = false }
 sha2 = "0.10"
+
+[target.'cfg(target_os = "macos")'.dependencies]
+keyring = { version = "3", features = ["apple-native"] }
+
+[target.'cfg(target_os = "windows")'.dependencies]
+keyring = { version = "3", features = ["windows-native"] }
+
+[target.'cfg(target_os = "linux")'.dependencies]
+keyring = { version = "3", features = ["sync-secret-service", "crypto-rust"] }
