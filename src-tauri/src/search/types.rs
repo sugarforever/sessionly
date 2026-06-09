@@ -53,4 +53,6 @@ pub struct BackendConfig {
     pub model: String,
     #[serde(default, skip_serializing)]
     pub api_key: Option<String>, // inbound only; never serialized back out
+    #[serde(default, skip_serializing)]
+    pub has_key: bool, // computed in config(); never persisted or trusted from inbound
 }

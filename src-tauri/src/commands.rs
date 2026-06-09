@@ -130,8 +130,31 @@ pub fn search_get_backend(state: State<'_, AppState>) -> BackendConfig {
             provider: "local".into(),
             model: "multilingual-e5-small".into(),
             api_key: None,
+            has_key: false,
         },
     }
+}
+
+#[tauri::command]
+pub async fn search_delete_api_key(
+    app: tauri::AppHandle,
+    state: State<'_, AppState>,
+) -> Result<(), String> {
+    let Some(svc) = state.search.clone() else {
+        return Err("search unavailable".into());
+    };
+    let dir = app.path().app_data_dir().map_err(|e| e.to_string())?;
+    let svc_for_build = svc.clone();
+    let res = tokio::task::spawn_blocking(move || svc.delete_api_key(&dir))
+        .await
+        .map_err(|e| e.to_string())?;
+    // if we reverted to local, rebuild to repopulate the (wiped) index
+    if res.is_ok() {
+        std::thread::spawn(move || {
+            let _ = svc_for_build.build();
+        });
+    }
+    res
 }
 
 #[tauri::command]

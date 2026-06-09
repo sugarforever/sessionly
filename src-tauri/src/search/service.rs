@@ -342,7 +342,36 @@ impl SearchService {
     }
 
     pub fn config(&self) -> BackendConfig {
-        self.config.lock().unwrap().clone()
+        let mut cfg = self.config.lock().unwrap().clone();
+        cfg.api_key = None;
+        cfg.has_key = key_present(&cfg);
+        cfg
+    }
+
+    /// Delete the stored OpenAI API key from the OS keychain. If the active
+    /// provider was OpenAI, revert to the local backend so search stays usable.
+    pub fn delete_api_key(&self, app_data_dir: &Path) -> Result<(), String> {
+        // Delete the keychain entry for the OpenAI provider; ignore "no entry".
+        if let Ok(entry) = keyring::Entry::new(KEYRING_SERVICE, "openai") {
+            match entry.delete_credential() {
+                Ok(()) => {}
+                Err(keyring::Error::NoEntry) => {}
+                Err(e) => return Err(e.to_string()),
+            }
+        }
+        let provider = self.config.lock().unwrap().provider.clone();
+        if provider == "openai" {
+            self.set_backend(
+                BackendConfig {
+                    provider: "local".into(),
+                    model: "multilingual-e5-small".into(),
+                    api_key: None,
+                    has_key: false,
+                },
+                app_data_dir,
+            )?;
+        }
+        Ok(())
     }
 
     pub fn set_backend(
@@ -452,6 +481,7 @@ fn load_config(dir: &std::path::Path) -> BackendConfig {
             provider: "local".into(),
             model: "multilingual-e5-small".into(),
             api_key: None,
+            has_key: false,
         })
 }
 
@@ -459,6 +489,11 @@ fn save_config(dir: &std::path::Path, cfg: &BackendConfig) {
     if let Ok(s) = serde_json::to_string_pretty(cfg) {
         let _ = std::fs::write(config_path(dir), s);
     }
+}
+
+/// Whether a non-local provider has an API key stored in the keychain.
+fn key_present(cfg: &BackendConfig) -> bool {
+    read_key(cfg).is_some()
 }
 
 fn read_key(cfg: &BackendConfig) -> Option<String> {

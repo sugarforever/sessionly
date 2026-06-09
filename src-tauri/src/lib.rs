@@ -98,6 +98,7 @@ pub fn run() {
             commands::search_reindex,
             commands::search_get_backend,
             commands::search_set_backend,
+            commands::search_delete_api_key,
             commands::search_enable,
             commands::search_cancel_build,
             commands::search_delete_model,

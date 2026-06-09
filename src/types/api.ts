@@ -33,6 +33,7 @@ export const api = {
   searchReindex: () => invoke<void>('search_reindex'),
   searchGetBackend: () => invoke<BackendConfig>('search_get_backend'),
   searchSetBackend: (config: BackendConfig) => invoke<void>('search_set_backend', { config }),
+  searchDeleteApiKey: () => invoke<void>('search_delete_api_key'),
   searchEnable: () => invoke<void>('search_enable'),
   searchCancelBuild: () => invoke<void>('search_cancel_build'),
   searchDeleteModel: () => invoke<void>('search_delete_model'),

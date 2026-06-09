@@ -32,4 +32,5 @@ export interface BackendConfig {
   provider: 'local' | 'openai'
   model: string
   apiKey?: string
+  hasKey: boolean
 }

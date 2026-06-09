@@ -76,6 +76,7 @@ export function SettingsPage() {
   const [backend, setBackend] = useState<BackendConfig>({
     provider: 'local',
     model: 'multilingual-e5-small',
+    hasKey: false,
   })
   const [apiKey, setApiKey] = useState('')
   const [idxStatus, setIdxStatus] = useState<IndexStatus | null>(null)
@@ -132,10 +133,10 @@ export function SettingsPage() {
   const saveBackend = async (provider: 'local' | 'openai') => {
     const cfg: BackendConfig =
       provider === 'openai'
-        ? { provider, model: 'text-embedding-3-small', apiKey: apiKey || undefined }
-        : { provider, model: 'multilingual-e5-small' }
+        ? { provider, model: 'text-embedding-3-small', apiKey: apiKey || undefined, hasKey: false }
+        : { provider, model: 'multilingual-e5-small', hasKey: false }
     await api.searchSetBackend(cfg)
-    setBackend({ provider: cfg.provider, model: cfg.model })
+    setBackend({ provider: cfg.provider, model: cfg.model, hasKey: cfg.hasKey })
   }
 
   const refresh = useCallback(async () => {
