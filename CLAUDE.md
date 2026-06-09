@@ -102,7 +102,7 @@ Note: command arguments are camelCase on the JS side and snake_case in Rust — 
 - `markdown_export.rs` — session → Markdown export.
 - `hooks.rs` — install/uninstall/status of Claude Code hooks.
 
-Registered commands (`lib.rs`): `get_projects`, `get_session`, `get_version`, `get_native_theme`, `export_session_markdown`, `hooks_get_status`, `hooks_install`, `hooks_uninstall`, `hooks_is_installed`, `send_native_notification`, `search_query`, `search_index_status`, `search_reindex`, `search_get_backend`, `search_set_backend`.
+Registered commands (`lib.rs`): `get_projects`, `get_session`, `get_version`, `get_native_theme`, `export_session_markdown`, `hooks_get_status`, `hooks_install`, `hooks_uninstall`, `hooks_is_installed`, `send_native_notification`, `search_query`, `search_index_status`, `search_reindex`, `search_get_backend`, `search_set_backend`, `search_delete_api_key`, `search_enable`, `search_cancel_build`, `search_get_triggers`, `search_set_triggers`.
 
 Registered plugins: `opener`, `shell`, `dialog`, `fs`, `process`, `updater`, `notification`.
 
@@ -113,7 +113,12 @@ Registered plugins: `opener`, `shell`, `dialog`, `fs`, `process`, `updater`, `no
 
 This matters for upgrades: because real data lives in `~/.claude`, switching app versions (even Electron→Tauri) loses no session data — only the trivial localStorage prefs reset.
 
-**Exception (search index):** The search feature maintains a derived SQLite index (`search-index.sqlite`) in the app-data dir — FTS5 keyword + `sqlite-vec` vectors. It is a **rebuildable cache** (delete it and it rebuilds from `~/.claude`); it stores no authoritative session data, so the single-source-of-truth model is preserved. API keys for cloud embedding backends are stored in the OS keychain, not localStorage.
+**Exception (search index):** The search feature maintains a derived SQLite index (`search-index.sqlite`) in the app-data dir — FTS5 keyword + `sqlite-vec` vectors, blended with Reciprocal Rank Fusion. It is a **rebuildable cache** (delete it and it rebuilds from `~/.claude`); it stores no authoritative session data, so the single-source-of-truth model is preserved.
+
+- **Embedding backend: OpenAI only.** `text-embedding-3-small` (1536-dim) is the sole backend. The earlier on-device local model (multilingual-e5-small via `fastembed`) was removed; on launch the service migrates any saved local config to OpenAI, wipes the stale 384-dim index, and deletes the old `models/` download dir. Search stays off until the user supplies a key.
+- **API key** is stored in the **OS keychain** (`keyring`, service `app.sessionly.search`, account `openai`) — never in config files, localStorage, or logs. The `BackendConfig.api_key` field is inbound-only (`skip_serializing`); the frontend only ever receives a `has_key` boolean.
+- **Indexing is always full-corpus** (every project) and incremental — each session is content-hashed, so unchanged sessions are skipped. There is no index-time scope; the Search page narrows results with a **query-time project filter** instead.
+- **Automatic-indexing timings are user-configurable** (`IndexTriggers`, persisted to `search-triggers.json`): on app startup, on session completion (hook-driven), and on opening the Search page. Each re-embed spends OpenAI tokens, so any trigger can be turned off in Settings; with all off, the index only updates on an explicit "Rebuild index".
 
 ### Capabilities / permissions
 
