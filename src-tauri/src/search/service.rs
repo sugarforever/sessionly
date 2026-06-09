@@ -124,6 +124,9 @@ impl SearchService {
         }
         *self.last_error.lock().unwrap() = None;
         let result = self.build_inner();
+        if let Err(e) = &result {
+            *self.last_error.lock().unwrap() = Some(e.clone());
+        }
         self.building.store(false, Ordering::SeqCst);
         self.cancel.store(false, Ordering::SeqCst);
         let now = chrono::Utc::now().timestamp();
