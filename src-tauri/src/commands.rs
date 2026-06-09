@@ -1,4 +1,4 @@
-use crate::search::{BackendConfig, IndexStatus, SearchFilters, SearchHit};
+use crate::search::{BackendConfig, IndexStatus, IndexTriggers, SearchFilters, SearchHit};
 use crate::session_store;
 use crate::session_types::{ProjectGroup, Session};
 use crate::AppState;
@@ -202,6 +202,29 @@ pub fn search_cancel_build(state: State<'_, AppState>) -> Result<(), String> {
         return Err("search unavailable".into());
     };
     svc.cancel_build();
+    Ok(())
+}
+
+#[tauri::command]
+pub fn search_get_triggers(state: State<'_, AppState>) -> IndexTriggers {
+    state
+        .search
+        .as_ref()
+        .map(|s| s.triggers())
+        .unwrap_or_default()
+}
+
+#[tauri::command]
+pub fn search_set_triggers(
+    app: tauri::AppHandle,
+    state: State<'_, AppState>,
+    triggers: IndexTriggers,
+) -> Result<(), String> {
+    let Some(svc) = &state.search else {
+        return Err("search unavailable".into());
+    };
+    let dir = app.path().app_data_dir().map_err(|e| e.to_string())?;
+    svc.set_triggers(triggers, &dir);
     Ok(())
 }
 

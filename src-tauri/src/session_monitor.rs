@@ -108,20 +108,24 @@ impl SessionMonitor {
 
         if new_state == SessionState::Completed {
             if let Some(search) = self.search.lock().unwrap().clone() {
-                if let Some(cwd) = cwd.clone() {
-                    let session_id = info.session_id.clone();
-                    std::thread::spawn(move || {
-                        // Find the encoded project dir whose decoded path matches cwd.
-                        if let Some(project_encoded) = crate::session_store::list_projects()
-                            .into_iter()
-                            .find(|p| crate::session_store::decode_project_path(p) == cwd)
-                        {
-                            let file = crate::session_store::get_projects_dir()
-                                .join(&project_encoded)
-                                .join(format!("{session_id}.jsonl"));
-                            let _ = search.index_one(&project_encoded, &session_id, &file);
-                        }
-                    });
+                // Respect the user's "index on session completion" setting —
+                // each index re-embeds chunks, which costs tokens on cloud backends.
+                if search.triggers().on_completion {
+                    if let Some(cwd) = cwd.clone() {
+                        let session_id = info.session_id.clone();
+                        std::thread::spawn(move || {
+                            // Find the encoded project dir whose decoded path matches cwd.
+                            if let Some(project_encoded) = crate::session_store::list_projects()
+                                .into_iter()
+                                .find(|p| crate::session_store::decode_project_path(p) == cwd)
+                            {
+                                let file = crate::session_store::get_projects_dir()
+                                    .join(&project_encoded)
+                                    .join(format!("{session_id}.jsonl"));
+                                let _ = search.index_one(&project_encoded, &session_id, &file);
+                            }
+                        });
+                    }
                 }
             }
         }

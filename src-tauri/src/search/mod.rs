@@ -6,4 +6,4 @@ pub mod service;
 pub mod types;
 
 pub use service::SearchService;
-pub use types::{BackendConfig, IndexStatus, SearchFilters, SearchHit};
+pub use types::{BackendConfig, IndexStatus, IndexTriggers, SearchFilters, SearchHit};

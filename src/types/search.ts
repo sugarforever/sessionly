@@ -34,3 +34,9 @@ export interface BackendConfig {
   apiKey?: string
   hasKey: boolean
 }
+
+export interface IndexTriggers {
+  onStartup: boolean
+  onCompletion: boolean
+  onSearchOpen: boolean
+}

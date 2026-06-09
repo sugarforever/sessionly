@@ -26,10 +26,16 @@ export function SearchPage() {
   const dispatch = useAppDispatch()
 
   // Refresh the index when Search opens so newly-finished sessions are
-  // searchable. It is hash-skipped and single-flighted, so this is cheap when
-  // nothing changed. Also load the project list for the filter.
+  // searchable — but only if the user enabled that trigger (it can spend tokens
+  // on cloud backends). It is hash-skipped and single-flighted, so it is cheap
+  // when nothing changed. Also load the project list for the filter.
   useEffect(() => {
-    api.searchReindex().catch(() => {})
+    api
+      .searchGetTriggers()
+      .then((t) => {
+        if (t.onSearchOpen) return api.searchReindex()
+      })
+      .catch(() => {})
     api
       .sessionsGetAll()
       .then((groups) =>

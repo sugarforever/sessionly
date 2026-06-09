@@ -46,6 +46,31 @@ pub struct IndexStatus {
     pub error: Option<String>,
 }
 
+/// User-controlled timings for automatic (re)indexing. Each automatic trigger
+/// can re-embed sessions, which costs API tokens on cloud backends — so users
+/// can turn any of them off to control billing. Disabling them all means the
+/// index only updates on an explicit "Rebuild index".
+#[derive(Debug, Clone, Copy, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct IndexTriggers {
+    /// Index pending sessions when the app launches.
+    pub on_startup: bool,
+    /// Index a session as soon as it finishes (hook-driven, live).
+    pub on_completion: bool,
+    /// Refresh the index when the Search page is opened.
+    pub on_search_open: bool,
+}
+
+impl Default for IndexTriggers {
+    fn default() -> Self {
+        Self {
+            on_startup: true,
+            on_completion: true,
+            on_search_open: true,
+        }
+    }
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct BackendConfig {

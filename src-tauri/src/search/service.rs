@@ -1,7 +1,7 @@
 use crate::search::chunker::chunk_message;
 use crate::search::embedder::{build_embedder, Embedder};
 use crate::search::index::{ChunkRow, SearchIndex};
-use crate::search::types::{BackendConfig, IndexStatus, SearchFilters, SearchHit};
+use crate::search::types::{BackendConfig, IndexStatus, IndexTriggers, SearchFilters, SearchHit};
 use crate::session_store;
 use sha2::{Digest, Sha256};
 use std::path::{Path, PathBuf};
@@ -24,6 +24,7 @@ pub struct SearchService {
     enabled: AtomicBool,
     cancel: AtomicBool,
     rerun: AtomicBool,
+    triggers: Mutex<IndexTriggers>,
     last_error: Mutex<Option<String>>,
 }
 
@@ -58,6 +59,7 @@ impl SearchService {
             enabled: AtomicBool::new(enabled),
             cancel: AtomicBool::new(false),
             rerun: AtomicBool::new(false),
+            triggers: Mutex::new(read_triggers(&app_data_dir)),
             last_error: Mutex::new(None),
         })
     }
@@ -338,6 +340,17 @@ impl SearchService {
         Ok(())
     }
 
+    /// Current automatic-indexing trigger settings.
+    pub fn triggers(&self) -> IndexTriggers {
+        *self.triggers.lock().unwrap()
+    }
+
+    /// Persist new automatic-indexing trigger settings.
+    pub fn set_triggers(&self, triggers: IndexTriggers, app_data_dir: &Path) {
+        write_triggers(app_data_dir, &triggers);
+        *self.triggers.lock().unwrap() = triggers;
+    }
+
     pub fn config(&self) -> BackendConfig {
         let mut cfg = self.config.lock().unwrap().clone();
         cfg.api_key = None;
@@ -416,6 +429,19 @@ fn read_enabled(dir: &Path) -> bool {
 
 fn write_enabled(dir: &Path, enabled: bool) {
     let _ = std::fs::write(enabled_path(dir), if enabled { "1" } else { "0" });
+}
+
+fn read_triggers(dir: &Path) -> IndexTriggers {
+    std::fs::read_to_string(dir.join("search-triggers.json"))
+        .ok()
+        .and_then(|s| serde_json::from_str(&s).ok())
+        .unwrap_or_default()
+}
+
+fn write_triggers(dir: &Path, triggers: &IndexTriggers) {
+    if let Ok(s) = serde_json::to_string_pretty(triggers) {
+        let _ = std::fs::write(dir.join("search-triggers.json"), s);
+    }
 }
 
 fn dir_size(path: &Path) -> u64 {

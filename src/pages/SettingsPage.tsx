@@ -1,7 +1,7 @@
 import { useEffect, useState, useCallback, useRef } from 'react'
 import { api } from '@/types/api'
 import type { HookStatus } from '@/types/session-types'
-import type { BackendConfig, IndexStatus } from '@/types/search'
+import type { BackendConfig, IndexStatus, IndexTriggers } from '@/types/search'
 import { useNotificationContext } from '@/contexts/NotificationContext'
 
 /*
@@ -79,6 +79,7 @@ export function SettingsPage() {
   const [keySaved, setKeySaved] = useState(false)
   const keySavedTimer = useRef<ReturnType<typeof setTimeout>>(undefined)
   const [idxStatus, setIdxStatus] = useState<IndexStatus | null>(null)
+  const [triggers, setTriggers] = useState<IndexTriggers | null>(null)
 
   const mb = (b: number) => `${Math.max(1, Math.round(b / 1_000_000))} MB`
 
@@ -103,9 +104,20 @@ export function SettingsPage() {
   useEffect(() => {
     reloadBackend()
     refreshIdxStatus()
+    api
+      .searchGetTriggers()
+      .then(setTriggers)
+      .catch(() => {})
     const id = window.setInterval(refreshIdxStatus, 2000)
     return () => window.clearInterval(id)
   }, [refreshIdxStatus, reloadBackend])
+
+  const updateTriggers = async (patch: Partial<IndexTriggers>) => {
+    if (!triggers) return
+    const next = { ...triggers, ...patch }
+    setTriggers(next)
+    await api.searchSetTriggers(next)
+  }
 
   const saveBackend = async (provider: 'local' | 'openai') => {
     const cfg: BackendConfig =
@@ -473,6 +485,70 @@ export function SettingsPage() {
               </div>
             )}
           </div>
+
+          {/* Automatic indexing */}
+          {triggers && (
+            <div className="space-y-3 border-t border-border pt-5">
+              <Overline>Automatic indexing</Overline>
+              <p className="text-[12px]" style={{ color: SUBTLE }}>
+                Keep the index warm so searches are instant. Each automatic index re-embeds new or
+                changed sessions
+                {backend.provider === 'openai'
+                  ? ' — which spends OpenAI tokens. Turn these off to control billing.'
+                  : '. The local model runs on your machine, so this is free.'}
+              </p>
+              <div className="space-y-3 pt-1">
+                <div className="flex items-center justify-between gap-4">
+                  <div>
+                    <div className="text-[13px]" style={{ color: TEXT_2 }}>
+                      On app startup
+                    </div>
+                    <p className="text-[12px]" style={{ color: SUBTLE }}>
+                      Index any pending sessions when Sessionly launches
+                    </p>
+                  </div>
+                  <Toggle
+                    checked={triggers.onStartup}
+                    onChange={() => updateTriggers({ onStartup: !triggers.onStartup })}
+                  />
+                </div>
+                <div className="flex items-center justify-between gap-4">
+                  <div>
+                    <div className="text-[13px]" style={{ color: TEXT_2 }}>
+                      When a session completes
+                    </div>
+                    <p className="text-[12px]" style={{ color: SUBTLE }}>
+                      Index a session the moment it finishes (live, via hooks)
+                    </p>
+                  </div>
+                  <Toggle
+                    checked={triggers.onCompletion}
+                    onChange={() => updateTriggers({ onCompletion: !triggers.onCompletion })}
+                  />
+                </div>
+                <div className="flex items-center justify-between gap-4">
+                  <div>
+                    <div className="text-[13px]" style={{ color: TEXT_2 }}>
+                      When opening Search
+                    </div>
+                    <p className="text-[12px]" style={{ color: SUBTLE }}>
+                      Refresh the index each time you open the Search page
+                    </p>
+                  </div>
+                  <Toggle
+                    checked={triggers.onSearchOpen}
+                    onChange={() => updateTriggers({ onSearchOpen: !triggers.onSearchOpen })}
+                  />
+                </div>
+              </div>
+              {!triggers.onStartup && !triggers.onCompletion && !triggers.onSearchOpen && (
+                <p className="text-[12px]" style={{ color: SUBTLE }}>
+                  All automatic indexing is off — the index only updates when you click “Rebuild
+                  index” above.
+                </p>
+              )}
+            </div>
+          )}
         </section>
       </div>
     </div>

@@ -3,7 +3,7 @@
  */
 import { invoke } from '@tauri-apps/api/core'
 import type { ProjectGroup, Session, HookStatus } from './session-types'
-import type { SearchHit, SearchFilters, IndexStatus, BackendConfig } from './search'
+import type { SearchHit, SearchFilters, IndexStatus, BackendConfig, IndexTriggers } from './search'
 
 export const api = {
   // App
@@ -37,4 +37,6 @@ export const api = {
   searchEnable: () => invoke<void>('search_enable'),
   searchCancelBuild: () => invoke<void>('search_cancel_build'),
   searchDeleteModel: () => invoke<void>('search_delete_model'),
+  searchGetTriggers: () => invoke<IndexTriggers>('search_get_triggers'),
+  searchSetTriggers: (triggers: IndexTriggers) => invoke<void>('search_set_triggers', { triggers }),
 }

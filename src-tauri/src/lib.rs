@@ -36,10 +36,13 @@ pub fn run() {
                 Ok(svc) => {
                     let svc = Arc::new(svc);
                     monitor.set_search(svc.clone());
-                    let svc_build = svc.clone();
-                    std::thread::spawn(move || {
-                        let _ = svc_build.build();
-                    });
+                    // Only warm the index at startup if the user opted into it.
+                    if svc.triggers().on_startup {
+                        let svc_build = svc.clone();
+                        std::thread::spawn(move || {
+                            let _ = svc_build.build();
+                        });
+                    }
                     Some(svc)
                 }
                 Err(e) => {
@@ -102,6 +105,8 @@ pub fn run() {
             commands::search_enable,
             commands::search_cancel_build,
             commands::search_delete_model,
+            commands::search_get_triggers,
+            commands::search_set_triggers,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
