@@ -79,6 +79,8 @@ export function SettingsPage() {
     hasKey: false,
   })
   const [apiKey, setApiKey] = useState('')
+  const [keySaved, setKeySaved] = useState(false)
+  const keySavedTimer = useRef<ReturnType<typeof setTimeout>>(undefined)
   const [idxStatus, setIdxStatus] = useState<IndexStatus | null>(null)
   const [projects, setProjects] = useState<{ project: string; projectEncoded: string }[]>([])
   const [scope, setScope] = useState<string[] | null>(null) // null = all
@@ -94,15 +96,21 @@ export function SettingsPage() {
     []
   )
 
+  const reloadBackend = useCallback(
+    () =>
+      api
+        .searchGetBackend()
+        .then(setBackend)
+        .catch(() => {}),
+    []
+  )
+
   useEffect(() => {
-    api
-      .searchGetBackend()
-      .then(setBackend)
-      .catch(() => {})
+    reloadBackend()
     refreshIdxStatus()
     const id = window.setInterval(refreshIdxStatus, 2000)
     return () => window.clearInterval(id)
-  }, [refreshIdxStatus])
+  }, [refreshIdxStatus, reloadBackend])
 
   useEffect(() => {
     api
@@ -136,7 +144,31 @@ export function SettingsPage() {
         ? { provider, model: 'text-embedding-3-small', apiKey: apiKey || undefined, hasKey: false }
         : { provider, model: 'multilingual-e5-small', hasKey: false }
     await api.searchSetBackend(cfg)
-    setBackend({ provider: cfg.provider, model: cfg.model, hasKey: cfg.hasKey })
+    await reloadBackend()
+    refreshIdxStatus()
+  }
+
+  const saveApiKey = async () => {
+    if (!apiKey.trim()) return
+    await saveBackend('openai')
+    setApiKey('')
+    setKeySaved(true)
+    clearTimeout(keySavedTimer.current)
+    keySavedTimer.current = setTimeout(() => setKeySaved(false), 4000)
+  }
+
+  const deleteApiKey = async () => {
+    if (
+      !window.confirm(
+        'Delete the stored OpenAI API key? Search will switch back to the local model.'
+      )
+    )
+      return
+    await api.searchDeleteApiKey()
+    setApiKey('')
+    setKeySaved(false)
+    await reloadBackend()
+    refreshIdxStatus()
   }
 
   const refresh = useCallback(async () => {
@@ -170,7 +202,13 @@ export function SettingsPage() {
     testTimerRef.current = setTimeout(() => setTestResult(null), 6000)
   }
 
-  useEffect(() => () => clearTimeout(testTimerRef.current), [])
+  useEffect(
+    () => () => {
+      clearTimeout(testTimerRef.current)
+      clearTimeout(keySavedTimer.current)
+    },
+    []
+  )
 
   const backendPill = (provider: 'local' | 'openai', label: string, sub: string) => (
     <button
@@ -320,19 +358,43 @@ export function SettingsPage() {
               </p>
             ) : !idxStatus.enabled ? (
               <div className="space-y-3">
-                <p className="text-[13px]" style={{ color: MUTED }}>
-                  Search is off. Semantic search runs locally and needs a one-time ~120&nbsp;MB
-                  model download.
-                </p>
-                <button
-                  onClick={async () => {
-                    await api.searchEnable()
-                    await refreshIdxStatus()
-                  }}
-                  className={btnPrimary}
-                >
-                  Enable search &amp; download
-                </button>
+                {backend.provider === 'local' ? (
+                  <>
+                    <p className="text-[13px]" style={{ color: MUTED }}>
+                      Search is off. The local embedding model (~120&nbsp;MB) downloads once on
+                      first use, then runs privately on your machine.
+                    </p>
+                    <button
+                      onClick={async () => {
+                        await api.searchEnable()
+                        await refreshIdxStatus()
+                      }}
+                      className={btnPrimary}
+                    >
+                      Enable &amp; download model
+                    </button>
+                  </>
+                ) : backend.hasKey ? (
+                  <>
+                    <p className="text-[13px]" style={{ color: MUTED }}>
+                      Search is off. OpenAI embeddings need no download.
+                    </p>
+                    <button
+                      onClick={async () => {
+                        await api.searchEnable()
+                        await refreshIdxStatus()
+                      }}
+                      className={btnPrimary}
+                    >
+                      Enable search
+                    </button>
+                  </>
+                ) : (
+                  <p className="text-[13px]" style={{ color: MUTED }}>
+                    Search is off. Add your OpenAI API key below to enable search — no download
+                    needed.
+                  </p>
+                )}
               </div>
             ) : idxStatus.building ? (
               <div className="flex flex-wrap items-center gap-3">
@@ -389,6 +451,11 @@ export function SettingsPage() {
                 )}
               </div>
             )}
+            {idxStatus?.error && (
+              <p className="text-[12px]" style={{ color: '#e5484d' }}>
+                Last indexing error: {idxStatus.error}
+              </p>
+            )}
           </div>
 
           {/* Embedding backend */}
@@ -399,15 +466,47 @@ export function SettingsPage() {
               {backendPill('openai', 'OpenAI', 'text-embedding-3-small')}
             </div>
             {backend.provider === 'openai' && (
-              <input
-                type="password"
-                value={apiKey}
-                onChange={(e) => setApiKey(e.target.value)}
-                onBlur={() => saveBackend('openai')}
-                placeholder="OpenAI API key (stored in your OS keychain)"
-                className="w-full rounded-md border border-white/[0.08] bg-white/[0.02] px-3 py-2 text-[13px] outline-none placeholder:text-[#62666d] focus:border-[#5e6ad2]/60"
-                style={{ color: TEXT }}
-              />
+              <div className="space-y-2">
+                <input
+                  type="password"
+                  value={apiKey}
+                  onChange={(e) => setApiKey(e.target.value)}
+                  onBlur={saveApiKey}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      e.preventDefault()
+                      void saveApiKey()
+                    }
+                  }}
+                  placeholder={
+                    backend.hasKey
+                      ? 'Enter a new key to replace the stored one…'
+                      : 'OpenAI API key (stored only in your OS keychain)'
+                  }
+                  className="w-full rounded-md border border-white/[0.08] bg-white/[0.02] px-3 py-2 text-[13px] outline-none placeholder:text-[#62666d] focus:border-[#5e6ad2]/60"
+                  style={{ color: TEXT }}
+                />
+                <div className="flex items-center gap-3 text-[12px]">
+                  {keySaved ? (
+                    <span style={{ color: '#27a644' }}>✓ Saved to your OS keychain</span>
+                  ) : backend.hasKey ? (
+                    <>
+                      <span style={{ color: '#27a644' }}>✓ Key stored in your OS keychain</span>
+                      <button
+                        onClick={deleteApiKey}
+                        className="transition-colors hover:text-[#f7f8f8]"
+                        style={{ color: MUTED }}
+                      >
+                        Delete key
+                      </button>
+                    </>
+                  ) : (
+                    <span style={{ color: SUBTLE }}>
+                      Press Enter or click away to save. Stored only in your OS keychain.
+                    </span>
+                  )}
+                </div>
+              </div>
             )}
           </div>
 
