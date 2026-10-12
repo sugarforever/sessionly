@@ -2,6 +2,7 @@ mod commands;
 mod hooks;
 mod markdown_export;
 mod session_monitor;
+mod session_search;
 mod session_store;
 mod session_types;
 
@@ -65,6 +66,7 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             commands::get_projects,
             commands::get_session,
+            commands::search_sessions,
             commands::get_version,
             commands::get_native_theme,
             commands::export_session_markdown,

@@ -1,7 +1,8 @@
-import { RefreshCw, Loader2, Eye, EyeOff } from 'lucide-react'
+import { RefreshCw, Loader2, Eye, EyeOff, Search, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import type { ProjectGroup as ProjectGroupType } from '@/types/session-types'
+import type { ProjectGroup as ProjectGroupType, SearchResult } from '@/types/session-types'
 import { ProjectGroup } from './ProjectGroup'
+import { SearchResults } from './SearchResults'
 
 interface SessionSidebarProps {
   projectGroups: ProjectGroupType[]
@@ -18,6 +19,12 @@ interface SessionSidebarProps {
   onUnhideSession: (sessionId: string) => void
   hiddenProjects: string[]
   hiddenSessions: string[]
+  searchQuery: string
+  onSearchChange: (query: string) => void
+  isSearching: boolean
+  searchActive: boolean
+  searchResults: SearchResult[]
+  searchError: string | null
 }
 
 export function SessionSidebar({
@@ -35,6 +42,12 @@ export function SessionSidebar({
   onUnhideSession,
   hiddenProjects,
   hiddenSessions,
+  searchQuery,
+  onSearchChange,
+  isSearching,
+  searchActive,
+  searchResults,
+  searchError,
 }: SessionSidebarProps) {
   const totalSessions = projectGroups.reduce((sum, g) => sum + g.sessions.length, 0)
   const totalHidden = hiddenCount.projects + hiddenCount.sessions
@@ -82,9 +95,39 @@ export function SessionSidebar({
           </Button>
         </div>
       </div>
+      <div className="shrink-0 border-b border-border px-3 py-2">
+        <div className="relative">
+          <Search className="pointer-events-none absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+          <input
+            value={searchQuery}
+            onChange={(e) => onSearchChange(e.target.value)}
+            placeholder="Search sessions…"
+            spellCheck={false}
+            className="h-8 w-full rounded-md border border-input bg-background pl-9 pr-8 text-sm text-foreground placeholder:text-muted-foreground/60 focus:outline-none focus:ring-1 focus:ring-ring"
+          />
+          {searchQuery ? (
+            <button
+              onClick={() => onSearchChange('')}
+              className="absolute right-1.5 top-1/2 -translate-y-1/2 rounded p-1 text-muted-foreground hover:bg-accent hover:text-foreground"
+              title="Clear search"
+            >
+              <X className="h-3.5 w-3.5" />
+            </button>
+          ) : null}
+        </div>
+      </div>
       <div className="flex-1 overflow-y-auto scrollbar-thin">
         <div className="p-2">
-          {isLoading && projectGroups.length === 0 ? (
+          {searchActive ? (
+            <SearchResults
+              results={searchResults}
+              isSearching={isSearching}
+              query={searchQuery}
+              error={searchError}
+              selectedSessionId={selectedSessionId}
+              onSelectSession={onSelectSession}
+            />
+          ) : isLoading && projectGroups.length === 0 ? (
             <div className="flex h-40 items-center justify-center">
               <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
             </div>

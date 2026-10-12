@@ -125,6 +125,32 @@ pub struct SessionSummary {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct SearchSnippet {
+    pub role: String,
+    pub timestamp: String,
+    pub excerpt: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct SearchResult {
+    pub id: String,
+    pub project: String,
+    #[serde(rename = "projectEncoded")]
+    pub project_encoded: String,
+    #[serde(rename = "firstMessage")]
+    pub first_message: String,
+    #[serde(rename = "messageCount")]
+    pub message_count: usize,
+    #[serde(rename = "matchedMessageCount")]
+    pub matched_message_count: usize,
+    #[serde(rename = "startTime")]
+    pub start_time: Option<i64>,
+    #[serde(rename = "endTime")]
+    pub end_time: Option<i64>,
+    pub snippets: Vec<SearchSnippet>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Session {
     pub id: String,
     pub project: String,

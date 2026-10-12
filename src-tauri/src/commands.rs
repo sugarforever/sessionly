@@ -18,6 +18,13 @@ pub async fn get_session(session_id: String, project_encoded: String) -> Option<
 }
 
 #[tauri::command]
+pub async fn search_sessions(query: String) -> Vec<crate::session_types::SearchResult> {
+    tokio::task::spawn_blocking(move || crate::session_search::search_sessions(&query))
+        .await
+        .unwrap_or_default()
+}
+
+#[tauri::command]
 pub fn get_version(app: tauri::AppHandle) -> String {
     app.config().version.clone().unwrap_or_else(|| "unknown".to_string())
 }

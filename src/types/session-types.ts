@@ -67,6 +67,24 @@ export interface SessionSummary {
   filePath: string
 }
 
+export interface SearchSnippet {
+  role: string
+  timestamp: string
+  excerpt: string
+}
+
+export interface SearchResult {
+  id: string
+  project: string
+  projectEncoded: string
+  firstMessage: string
+  messageCount: number
+  matchedMessageCount: number
+  startTime: number | null
+  endTime: number | null
+  snippets: SearchSnippet[]
+}
+
 export interface Session {
   id: string
   project: string

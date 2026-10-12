@@ -71,7 +71,7 @@ fn find_valid_path(base: &str, segments: &[&str]) -> Option<String> {
 }
 
 /// Extract text content from message content (can be string or array of blocks)
-fn extract_text_content(content: &serde_json::Value) -> String {
+pub(crate) fn extract_text_content(content: &serde_json::Value) -> String {
     if let Some(s) = content.as_str() {
         return s.to_string();
     }
