@@ -2,7 +2,7 @@
  * Tauri API bridge - replaces window.electron with Tauri invoke calls
  */
 import { invoke } from '@tauri-apps/api/core'
-import type { ProjectGroup, Session, HookStatus } from './session-types'
+import type { ProjectGroup, Session, HookStatus, SearchResult } from './session-types'
 
 export const api = {
   // App
@@ -15,6 +15,7 @@ export const api = {
   sessionsGetAll: () => invoke<ProjectGroup[]>('get_projects'),
   sessionsGet: (sessionId: string, projectEncoded: string) =>
     invoke<Session>('get_session', { sessionId, projectEncoded }),
+  sessionsSearch: (query: string) => invoke<SearchResult[]>('search_sessions', { query }),
   sessionsRefresh: () => Promise.resolve(), // Just re-fetch
   sessionsExportMarkdown: (sessionId: string, projectEncoded: string, destPath: string) =>
     invoke<void>('export_session_markdown', { sessionId, projectEncoded, destPath }),
